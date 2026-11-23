@@ -40,7 +40,7 @@ This is the part that matters for a trading app.
 
 | Risk | How it is handled |
 |---|---|
-| Mainnet / real funds | Adapters **refuse to boot** against any host that is not a testnet/demo host (`assertNonProductionHost`). There is no mainnet code path. |
+| Mainnet / real funds | The Binance adapter refuses to boot against any host that is not the testnet. The OKX adapter always sends the `x-simulated-trading: 1` header — demo only. There is no mainnet code path. |
 | API keys | Only in the server's `.env`. Never sent to the WebView, never logged, never committed (`.gitignore`). |
 | Accidental order | Voice only creates a **preview**. Executing requires a second gesture: swipe to **Yes**, then tap. The default selection is **No**. |
 | Double execution | The preview ID is single-use, bound to the exact quantity, and expires after 45 s. A second tap cannot send the same order twice. |
@@ -123,6 +123,8 @@ With no keys, `EXCHANGE=auto` falls back to a deterministic paper position and t
 ```bash
 curl -X POST localhost:8787/api/dev/reset   # put the demo position back
 ```
+
+While developing, `?demo=confirm`, `?demo=listening` and `?demo=alert` open those screens directly in a dev build (`import.meta.env.DEV` only).
 
 ## Voice
 

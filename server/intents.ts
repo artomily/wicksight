@@ -74,7 +74,7 @@ export function extractPrice(text: string): number | null {
 const ALERT_VERBS = /\b(alert|alarm|warn|notify|ping|tell me|let me know)\b/
 const CANCEL_VERBS = /\b(cancel|clear|remove|delete|stop)\b/
 const CLOSE_VERBS = /\b(close|cut|reduce|take|trim|exit|get out)\b/
-const HALF_WORDS = /\b(half|fifty percent|50 percent|50%)\b/
+const HALF_WORDS = /\b(half|fifty percent|50 percent)\b|50\s*%/
 
 export function parseIntent(text: string, markPrice?: number): VoiceIntent {
   const normalized = ` ${text.toLowerCase().replace(/[^a-z0-9.,%$\s]+/g, ' ')} `
