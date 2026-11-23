@@ -31,6 +31,7 @@ let screen: Screen = { kind: 'boot' }
 let lastState: StateResponse | null = null
 let offline = false
 let pausedUntil: number | null = null
+let stale = false
 let created = false
 let lastTexts = new Map<number, string>()
 let lastPageWriteAt = 0
@@ -121,7 +122,7 @@ function specFor(next: Screen): ui.PageSpec {
     case 'boot':
       return ui.bootPage()
     case 'position':
-      return ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil)
+      return ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil, stale)
     case 'listening':
       return ui.listeningPage()
     case 'thinking':
@@ -143,7 +144,7 @@ async function show(next: Screen): Promise<void> {
   screen = next
   await enqueue(async () => {
     if (next.kind === 'position' && previous.kind === 'position' && created) {
-      const spec = ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil)
+      const spec = ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil, stale)
       for (const container of spec.texts) await upgradeText(container)
       return
     }
@@ -161,7 +162,7 @@ async function patchPosition(): Promise<void> {
       return
     }
     if (screen.kind !== 'position') return
-    const spec = ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil)
+    const spec = ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil, stale)
     for (const container of spec.texts) await upgradeText(container)
   })
 }
@@ -184,6 +185,7 @@ async function pollNow(): Promise<void> {
     lastState = state
     offline = false
     pausedUntil = state.meta.pausedUntil ?? null
+    stale = state.meta.stale === true
 
     if (screen.kind === 'boot') {
       await show({ kind: 'position' })

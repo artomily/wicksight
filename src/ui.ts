@@ -67,6 +67,7 @@ export function positionTexts(
   alertPrice?: number | null,
   offline = false,
   pausedUntil?: number | null,
+  stale = false,
 ): PositionTexts {
   if (!position) {
     if (pausedUntil) {
@@ -88,9 +89,11 @@ export function positionTexts(
     ? `○ RATE LIMITED · ${clock(pausedUntil)}`
     : offline
       ? '○ OFFLINE'
-      : alertPrice
-        ? `● ${label} · ALERT ${fmtPrice(alertPrice, 0)}`
-        : `● ${label} · ${position.leverage}x`
+      : stale
+        ? `○ ${label} · STALE`
+        : alertPrice
+          ? `● ${label} · ALERT ${fmtPrice(alertPrice, 0)}`
+          : `● ${label} · ${position.leverage}x`
 
   if (!position.hasPosition || !position.side) {
     return {
@@ -123,8 +126,9 @@ export function positionPage(
   alertPrice?: number | null,
   offline = false,
   pausedUntil?: number | null,
+  stale = false,
 ): PageSpec {
-  const t = positionTexts(position, alertPrice, offline, pausedUntil)
+  const t = positionTexts(position, alertPrice, offline, pausedUntil, stale)
   return {
     texts: [
       captureLayer(true),
