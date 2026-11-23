@@ -10,7 +10,7 @@ Target: **2:55**. Record in the Even Hub simulator at 576×288, screen-recorded 
 - [ ] macOS microphone permission granted to the terminal running the simulator (System Settings → Privacy & Security → Microphone). Test one command before recording.
 - [ ] `API_TOKEN` is set in `.env` (not the `dev-local-token` default) and `CORS_ORIGINS` includes `http://localhost:5173`.
 - [ ] Simulator window at a readable size; hide desktop icons, notifications, other windows.
-- [ ] Reset the demo position: `curl -X POST localhost:8787/api/dev/reset` (mock only).
+- [ ] Do **not** call `/api/dev/reset` on a live account — it is mock-only and returns 404.
 - [ ] Record at 1080p or higher; crop/zoom the 576×288 canvas so text is legible on a phone screen.
 - [ ] Say the commands out loud twice as practice. Keep the mic close.
 
