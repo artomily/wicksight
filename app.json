@@ -1,0 +1,23 @@
+{
+  "package_id": "com.rakyavara.sessionguard",
+  "name": "Session Guard",
+  "version": "0.1.0",
+  "edition": "202601",
+  "min_sdk_version": "0.0.16",
+  "entrypoint": "index.html",
+  "permissions": [
+    {
+      "name": "network",
+      "desc": "Talks to your own Session Guard backend, which reads a testnet position and places testnet-only orders.",
+      "whitelist": [
+        "http://localhost:8787",
+        "https://session-guard.fly.dev"
+      ]
+    },
+    {
+      "name": "g2-microphone",
+      "desc": "Push-to-talk voice commands: set an alert or close half a position."
+    }
+  ],
+  "supported_languages": ["en"]
+}
