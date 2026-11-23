@@ -7,11 +7,11 @@ You look at your position, not your phone. Three lines on the glasses: position,
 ```
 ● BINANCE TESTNET · 20x
 
-BTCUSDT LONG 0.010 · 20x
+BTCUSDT LONG 0.01 · 20x
 
 PnL +9.64 USDT · ROE +30.5%
 
-Liq 60,279.60 · 5.9% away
+Liq 58,684.4 · 4.6% away
 
 Hold: speak · 2x exit
 ```
@@ -20,7 +20,7 @@ Hold: speak · 2x exit
 |---|---|---|
 | ![](docs/img/position.png) | ![](docs/img/confirm.png) | ![](docs/img/filled.png) |
 
-*Simulator capture with the mock position (no keys needed). With testnet keys the status line reads `BINANCE TESTNET`.*
+*Simulator capture against Binance Futures **testnet**: 0.01 BTCUSDT long, isolated 20x. No keys? The same screens run on a labelled mock position.*
 
 ## Why
 
