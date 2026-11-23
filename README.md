@@ -114,10 +114,12 @@ SYMBOL=BTCUSDT
 4. Verify access without placing an order:
 
 ```bash
-npm run check
+npm run check:live
 ```
 
-Expected: `OK — endpoint reachable and signed request accepted.` and the current testnet position.
+Expected: `mode: binance-testnet`, the current position, and `OK — testnet endpoint reachable and signed request accepted.` If you see `mode: mock`, the keys are not in this `.env` (only `.env.example`) or `EXCHANGE` still forces mock.
+
+`npm run check` is the softer version: it also accepts the mock adapter, for development.
 
 ### 2. Start it
 
