@@ -15,7 +15,7 @@ let localPipeline: LocalPipeline | null = null
 let loadPromise: Promise<LocalPipeline> | null = null
 let queue: Promise<unknown> = Promise.resolve()
 
-const MODEL = 'onnx-community/whisper-tiny.en'
+const MODEL = config.asrModel
 
 async function getLocalPipeline(): Promise<LocalPipeline> {
   if (localPipeline) return localPipeline
@@ -25,7 +25,7 @@ async function getLocalPipeline(): Promise<LocalPipeline> {
       const { pipeline } = await import('@huggingface/transformers')
       const asr = (await pipeline('automatic-speech-recognition', MODEL, { dtype: 'q8' })) as unknown as LocalPipeline
       localPipeline = asr
-      console.log(`[asr] whisper tiny.en ready in ${Date.now() - started}ms (local, no API key)`)
+      console.log(`[asr] ${MODEL} ready in ${Date.now() - started}ms (local, no API key)`)
       return asr
     })().catch((err) => {
       loadPromise = null

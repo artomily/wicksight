@@ -36,10 +36,12 @@ export class VoiceRecorder {
   }
 
   async stop(): Promise<Uint8Array> {
+    // Keep the mic open briefly after the release so the last word is not
+    // clipped, then stop and let buffered frames arrive.
+    await new Promise((resolve) => setTimeout(resolve, 250))
     this.open = false
     await this.bridge.audioControl(false)
-    // Let the last buffered 100 ms frame arrive before we snapshot.
-    await new Promise((resolve) => setTimeout(resolve, 150))
+    await new Promise((resolve) => setTimeout(resolve, 120))
     const out = new Uint8Array(this.bytes)
     let offset = 0
     for (const chunk of this.chunks) {

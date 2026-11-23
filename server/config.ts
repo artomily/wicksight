@@ -27,6 +27,7 @@ export const config = {
   symbol: str('SYMBOL', 'BTCUSDT').toUpperCase(),
   exchange,
   asrProvider: (str('ASR_PROVIDER', 'local').toLowerCase() as AsrProvider),
+  asrModel: str('ASR_MODEL', 'onnx-community/whisper-small.en'),
   warmAsr: str('WARM_ASR', '1') !== '0',
   binance: {
     baseUrl: str('BINANCE_FUTURES_BASE', 'https://testnet.binancefuture.com'),

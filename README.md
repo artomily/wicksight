@@ -140,7 +140,7 @@ While developing, `?demo=confirm`, `?demo=listening` and `?demo=alert` open thos
 
 ## Voice
 
-Speech-to-text runs **locally** by default: `onnx-community/whisper-tiny.en` (q8) inside the Node process via `@huggingface/transformers`. No API key, no audio leaves the machine. The model downloads once (~40 MB) and is warmed at boot; a short command transcribes in ~200–300 ms.
+Speech-to-text runs **locally** by default: `onnx-community/whisper-small.en` (q8) inside the Node process via `@huggingface/transformers`. No API key, no audio leaves the machine. The model downloads once (~250 MB) and is warmed at boot; a short command transcribes in ~0.7 s. Set `ASR_MODEL=onnx-community/whisper-tiny.en` for a 40 MB model (~0.25 s) if you accept weaker number recognition.
 
 ```dotenv
 ASR_PROVIDER=local     # or openai
