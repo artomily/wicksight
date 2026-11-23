@@ -191,7 +191,10 @@ async function pollNow(): Promise<void> {
       await patchPosition()
     }
 
-    if (state.alert?.triggeredAt && screen.kind !== 'alertHit') {
+    // Never steal the screen from a confirmation, a recording, or an
+    // in-flight order. The alert shows as soon as the user is back on the HUD.
+    const idleScreen = screen.kind === 'position' || screen.kind === 'result'
+    if (state.alert?.triggeredAt && idleScreen) {
       await show({ kind: 'alertHit' })
     }
   } catch (err) {

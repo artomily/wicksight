@@ -22,6 +22,8 @@ const exchange = resolveExchange()
 
 export const config = {
   port: Number(str('PORT', '8787')),
+  // Loopback by default: a testnet order API should not be reachable from the LAN.
+  host: str('HOST', '127.0.0.1'),
   symbol: str('SYMBOL', 'BTCUSDT').toUpperCase(),
   exchange,
   asrProvider: (str('ASR_PROVIDER', 'local').toLowerCase() as AsrProvider),

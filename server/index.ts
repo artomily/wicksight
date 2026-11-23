@@ -181,7 +181,7 @@ app.post('/api/dev/reset', async (_req, reply) => {
   return { ok: true }
 })
 
-await app.listen({ port: config.port, host: '0.0.0.0' })
+await app.listen({ port: config.port, host: config.host })
 
 const keyState =
   config.exchange === 'binance'

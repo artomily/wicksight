@@ -162,7 +162,7 @@ Commands understood:
 
 `npm run pack` produces `out.ehpk` (manifest + built `dist`). To run on real glasses the API needs a public HTTPS origin with CORS enabled; add that origin to the `network` whitelist in `app.json`. Keep the testnet keys on that server, never in the app bundle.
 
-The repo is deliberately **local-first**: judges and the owner can run the whole demo with `npm run dev` and the mock adapter, no keys, no hosting.
+The repo is deliberately **local-first**: judges and the owner can run the whole demo with `npm run dev` and the mock adapter, no keys, no hosting. The API binds to `127.0.0.1` by default; set `HOST=0.0.0.0` only when a phone on the LAN must reach it, and restrict CORS before exposing it publicly.
 
 ## Project layout
 ```
