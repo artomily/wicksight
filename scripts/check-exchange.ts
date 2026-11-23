@@ -17,14 +17,18 @@ console.log(`symbol: ${config.symbol}`)
 
 try {
   const position = await adapter.getPosition(config.symbol)
-  console.log(`mark:   ${position.markPrice}`)
+  console.log(`mark:   ${position.markPrice.toFixed(2)}`)
   console.log(`position: ${position.hasPosition ? `${position.side} ${position.qty}` : 'flat'}`)
   if (position.hasPosition) {
     console.log(`entry:  ${position.entryPrice}`)
     console.log(`liq:    ${position.liqPrice ?? 'n/a'}`)
     console.log(`pnl:    ${position.unrealizedPnl.toFixed(2)} USDT (${position.roePct.toFixed(1)}% ROE)`)
   }
-  console.log('OK — endpoint reachable and signed request accepted.')
+  console.log(
+    config.exchange === 'mock'
+      ? 'OK — mock adapter, no network calls.'
+      : 'OK — endpoint reachable and signed request accepted.',
+  )
 } catch (err) {
   const message = (err as Error).message
   console.error(`FAILED — ${message}`)
