@@ -50,7 +50,7 @@ function captureLayer(active: boolean): TextContainerProperty {
   })
 }
 
-const HINT_Y = 248
+const HINT_Y = 242
 
 interface PositionTexts {
   status: string
@@ -176,7 +176,7 @@ export function confirmPage(preview: OrderPreviewView, selected: 'no' | 'yes'): 
       text(4, 'detail', 72, `${preview.symbol} ${preview.side} · ${open} open`, { brightness: 3, z: 3 }),
       row(5, 124, 4, `No, keep ${open}`, selected === 'no'),
       row(6, 182, 5, `Yes, ${action} ${qty}`, selected === 'yes'),
-      text(7, 'hint', 250, 'Swipe to change · tap to confirm', { brightness: 2, z: 6 }),
+      text(7, 'hint', 242, 'Swipe to change · tap to confirm', { brightness: 2, z: 6 }),
     ],
   }
 }
