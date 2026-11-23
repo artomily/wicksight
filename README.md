@@ -183,6 +183,14 @@ scripts/check-exchange.ts   setup doctor
 docs/            demo script + feature requests
 ```
 
+## Tests
+
+`npm test` runs 21 checks with no network and no keys: intent parsing (spoken numbers, percent phrasing, refusal of "close all"), step-size flooring, single-use confirmation tokens, alert arming, the non-testnet host guard, and a stubbed Binance testnet that verifies request signing, the reduce-only order payload and error mapping.
+
+```bash
+npm test
+```
+
 ## Bench notes
 
 - Display: 576×288, one LVGL font, no size/alignment control. Layout is spacing and brightness, measured at a 27 px line pitch.
