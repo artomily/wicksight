@@ -171,3 +171,34 @@ test('maps a bad key to a human error instead of a raw exchange code', async (t)
   const adapter = new BinanceTestnetAdapter('key', 'secret')
   await assert.rejects(() => adapter.getPosition('BTCUSDT'), /rejected the API key/)
 })
+
+test('a 429 flips the adapter to PAUSED and stops every follow-up call', async (t) => {
+  const original = globalThis.fetch
+  let calls = 0
+
+  globalThis.fetch = (async () => {
+    calls += 1
+    return new Response(
+      JSON.stringify({
+        code: -1003,
+        msg: 'Way too many requests; IP(1.2.3.4) banned until 9999999999999. Please use the websocket for live updates to avoid bans.',
+      }),
+      { status: 429, headers: { 'retry-after': '60' } },
+    )
+  }) as typeof fetch
+  t.after(() => {
+    globalThis.fetch = original
+  })
+
+  const adapter = new BinanceTestnetAdapter('key', 'secret')
+  await assert.rejects(() => adapter.getPosition('BTCUSDT'), /paused this IP/)
+  const afterFirst = calls
+  assert.ok(afterFirst >= 1)
+  assert.ok(adapter.getPausedUntil() > Date.now())
+
+  await assert.rejects(() => adapter.getPosition('BTCUSDT'), /paused this IP/)
+  assert.equal(calls, afterFirst, 'no network calls may happen while paused')
+
+  await assert.rejects(() => adapter.previewCloseHalf('BTCUSDT'), /paused this IP/)
+  assert.equal(calls, afterFirst)
+})

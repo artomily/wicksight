@@ -15,7 +15,9 @@
     "pack": "npm run build && evenhub pack app.json dist",
     "check": "tsx scripts/check-exchange.ts",
     "test": "node --import tsx --test test/*.test.ts",
-    "check:live": "tsx scripts/check-exchange.ts --require-live"
+    "check:live": "tsx scripts/check-exchange.ts --require-live",
+    "start": "concurrently -k -n web,api -c cyan,magenta \"npm:dev:web\" \"npm:api:once\"",
+    "api:once": "tsx server/index.ts"
   },
   "dependencies": {
     "@evenrealities/even_hub_sdk": "^0.0.16",

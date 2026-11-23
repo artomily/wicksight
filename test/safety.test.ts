@@ -4,6 +4,7 @@ import { assertNonProductionHost } from '../server/config.ts'
 import { BinanceTestnetAdapter } from '../server/exchange/binance.ts'
 import { floorToStep } from '../server/exchange/types.ts'
 import { AlertStore, PreviewStore } from '../server/store.ts'
+import { OkxDemoAdapter } from '../server/exchange/okx.ts'
 
 test('binance adapter refuses a production host at construction', () => {
   assert.throws(
@@ -39,7 +40,7 @@ test('confirm token is single use', () => {
   }
   store.create(preview)
   assert.equal(store.take('p1').qty, 0.005)
-  assert.throws(() => store.take('p1'), /expired/)
+  assert.throws(() => store.take('p1'), /already used/)
 })
 
 test('alert arms on the correct side and fires once', () => {
@@ -58,4 +59,11 @@ test('alert above the market fires when price rises', () => {
   alerts.set(65_000, 64_000)
   assert.equal(alerts.check(64_500)?.triggeredAt, null)
   assert.ok(alerts.check(65_100)?.triggeredAt)
+})
+
+test('OKX adapter refuses to exist without demo mode', () => {
+  assert.throws(
+    () => new OkxDemoAdapter('key', 'secret', 'pass', 'https://www.okx.com', false),
+    /demo mode/,
+  )
 })

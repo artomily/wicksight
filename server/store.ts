@@ -1,3 +1,5 @@
+import { ExchangeError } from './exchange/types.ts'
+
 export type AlertDirection = 'above' | 'below'
 
 export interface AlertSnapshot {
@@ -49,14 +51,19 @@ export interface StoredPreview {
 }
 
 const PREVIEW_TTL_MS = 45_000
+const PREVIEW_KEEP_MS = 15 * 60_000
+const USED_TTL_MS = 10 * 60_000
 
 /**
  * A preview is the confirmation token: it carries the exact quantity the user
  * approved, can be consumed once, and expires quickly. A double tap cannot
- * send the same order twice.
+ * send the same order twice, and a stale/consumed token gets a clean 4xx.
  */
 export class PreviewStore {
   private previews = new Map<string, StoredPreview>()
+  private used = new Map<string, number>()
+
+  constructor(private readonly ttlMs = PREVIEW_TTL_MS) {}
 
   create(preview: StoredPreview): StoredPreview {
     this.prune()
@@ -66,16 +73,33 @@ export class PreviewStore {
 
   take(id: string): StoredPreview {
     this.prune()
+
+    if (this.used.has(id)) {
+      throw new ExchangeError('This confirmation was already used. Hold to speak again.', 409, 'PREVIEW_USED')
+    }
+
     const preview = this.previews.get(id)
-    if (!preview) throw new Error('This confirmation expired. Hold to speak again.')
+    if (!preview) {
+      throw new ExchangeError('Unknown confirmation. Hold to speak again.', 404, 'PREVIEW_UNKNOWN')
+    }
+
     this.previews.delete(id)
+    this.used.set(id, Date.now())
+
+    if (Date.now() - preview.createdAt > this.ttlMs) {
+      throw new ExchangeError('This confirmation expired. Hold to speak again.', 410, 'PREVIEW_EXPIRED')
+    }
+
     return preview
   }
 
   private prune() {
-    const cutoff = Date.now() - PREVIEW_TTL_MS
+    const now = Date.now()
+    for (const [id, at] of this.used) {
+      if (now - at > USED_TTL_MS) this.used.delete(id)
+    }
     for (const [id, preview] of this.previews) {
-      if (preview.createdAt < cutoff) this.previews.delete(id)
+      if (now - preview.createdAt > PREVIEW_KEEP_MS) this.previews.delete(id)
     }
   }
 }

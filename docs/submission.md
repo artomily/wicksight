@@ -23,9 +23,9 @@ Session Guard puts one open futures position on Even G2 and keeps it there: posi
 
 **How Even Hub is used.** The app is a Vite + TypeScript WebView app using `@evenrealities/even_hub_sdk` 0.0.16: text containers for the HUD, `textContainerUpgrade` for live values, `rebuildPageContainer` for screens, `audioControl` + `audioEvent` for 16 kHz PCM push-to-talk, and long-press events for the gesture. The network permission whitelist points at the owner's API origin, and `app.json` declares the glasses microphone.
 
-**The backend.** A small Fastify server holds the testnet key, reads `positionRisk` every two seconds, and owns every guard. Speech-to-text runs locally (Whisper tiny.en via transformers.js, ~250 ms, no cloud); a deterministic parser turns the transcript into an intent. Order writes are a two-step flow: a preview token carrying the exact quantity (45 s TTL, single use), then execution. The server re-reads the position and refuses sizes above the position or below the exchange step.
+**The backend.** A small Fastify server holds the testnet key, keeps the position from the Binance user data stream and the mark price from a 1 s WebSocket (REST only for the initial snapshot, orders and a fallback), and owns every guard. Speech-to-text runs locally (Whisper small.en via transformers.js, ~0.7 s, no cloud); a deterministic parser turns the transcript into an intent. Order writes are a two-step flow: a preview token carrying the exact quantity (45 s TTL, single use), then execution behind a shared app token. The server re-reads the position and refuses sizes above the position or below the exchange step.
 
-**Safety.** Testnet only: the Binance adapter refuses any host that is not `testnet.binancefuture.com` at boot, and there is no mainnet code path. API keys never leave the server and are gitignored. There is no custody and no auto-trading: alerts are display-only, and nothing sends an order without a swipe plus a tap. If the API is down, the HUD says so and the order path fails closed (`Order not sent · Nothing changed`).
+**Safety.** Testnet only: the Binance adapter refuses any host that is not `testnet.binancefuture.com` at boot; OKX runs only with its demo header. API keys never leave the server and are gitignored. Order routes require a shared app token and a CORS allowlist, so a stray page or `curl` cannot move the position. There is no custody and no auto-trading: alerts are display-only, and nothing sends an order without a swipe plus a tap. If the API is down, the HUD says so and the order path fails closed (`Order not sent · Nothing changed`).
 
 **Why it can launch.** Even Hub has messaging, news, AI and navigation apps but no trading app, and Track 03's own example is this workflow. The path is: catalogue listing with testnet + read-only mainnet (keys with trade permission disabled), then order writing only after an exchange review. The repo runs with no keys at all using a clearly labelled mock position, so anyone can try the interaction in the simulator in two commands.
 
@@ -33,7 +33,7 @@ Session Guard puts one open futures position on Even G2 and keeps it there: posi
 
 ## Built with
 
-Even Hub SDK 0.0.16, Vite, TypeScript, Fastify, transformers.js (Whisper tiny.en), Binance Futures testnet REST, OKX demo adapter (fallback), Even Hub simulator 0.9.3.
+Even Hub SDK 0.0.16, Vite, TypeScript, Fastify, transformers.js (Whisper small.en), Binance Futures testnet REST + WebSocket, OKX demo adapter (fallback), Even Hub simulator 0.9.3.
 
 ## Submission checklist
 

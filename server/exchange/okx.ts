@@ -28,9 +28,17 @@ export class OkxDemoAdapter implements ExchangeAdapter {
     private readonly apiSecret: string,
     private readonly passphrase: string,
     baseUrl = 'https://www.okx.com',
+    demo = true,
   ) {
-    // OKX demo is a header, not a host: every request still carries the
-    // x-simulated-trading flag, and only OKX's own host is allowed.
+    // OKX has no separate demo host: the guard is the request header, so the
+    // adapter refuses to exist unless demo mode is explicitly on.
+    if (!demo) {
+      throw new ExchangeError(
+        'OKX adapter refuses to run without demo mode. Set OKX_DEMO=1; there is no live OKX path in this build.',
+        500,
+        'NOT_DEMO',
+      )
+    }
     assertNonProductionHost(baseUrl, ['www.okx.com', 'okx.com'])
     if (!apiKey || !apiSecret || !passphrase) {
       throw new ExchangeError('OKX_API_KEY / OKX_API_SECRET / OKX_PASSPHRASE are missing in .env', 500, 'NO_KEYS')

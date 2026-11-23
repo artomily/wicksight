@@ -8,6 +8,10 @@ import type {
 
 export const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://localhost:8787'
 
+const APP_TOKEN = typeof __SG_API_TOKEN__ === 'string' ? __SG_API_TOKEN__ : ''
+const orderAuth = (): Record<string, string> =>
+  APP_TOKEN ? { Authorization: `Bearer ${APP_TOKEN}` } : {}
+
 export class ApiError extends Error {
   readonly code: string
   readonly pausedUntil?: number
@@ -70,14 +74,17 @@ export const api = {
     }),
 
   previewCloseHalf: () =>
-    request<{ preview: OrderPreviewView }>('/api/orders/preview', { method: 'POST' }),
+    request<{ preview: OrderPreviewView }>('/api/orders/preview', {
+      method: 'POST',
+      headers: orderAuth(),
+    }),
 
   executeCloseHalf: (id: string) =>
     request<{ fill: OrderFillView; position: PositionView; preview: OrderPreviewView }>(
       '/api/orders/execute',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...orderAuth() },
         body: JSON.stringify({ id }),
       },
     ),

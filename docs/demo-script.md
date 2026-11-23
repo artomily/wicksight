@@ -6,8 +6,9 @@ Target: **2:55**. Record in the Even Hub simulator at 576×288, screen-recorded 
 
 - [ ] `.env` has **testnet** keys; `npm run check:live` says `mode: binance-testnet` with the position open (not `mock`, not `flat`).
 - [ ] One open position on Binance Futures testnet (0.005–0.01 BTCUSDT long, isolated 20x). Note the liquidation price. `npm run check:live` must show it.
-- [ ] `npm run dev` and `evenhub-simulator http://localhost:5173 --automation-port 9898` running.
+- [ ] `npm start` (no file watcher) and `evenhub-simulator http://localhost:5173 --automation-port 9898` running.
 - [ ] macOS microphone permission granted to the terminal running the simulator (System Settings → Privacy & Security → Microphone). Test one command before recording.
+- [ ] `API_TOKEN` is set in `.env` (not the `dev-local-token` default) and `CORS_ORIGINS` includes `http://localhost:5173`.
 - [ ] Simulator window at a readable size; hide desktop icons, notifications, other windows.
 - [ ] Reset the demo position: `curl -X POST localhost:8787/api/dev/reset` (mock only).
 - [ ] Record at 1080p or higher; crop/zoom the 576×288 canvas so text is legible on a phone screen.

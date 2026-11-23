@@ -52,10 +52,11 @@ This is the part that matters for a trading app.
 
 | Risk | How it is handled |
 |---|---|
-| Mainnet / real funds | The Binance adapter refuses to boot against any host that is not the testnet. The OKX adapter always sends the `x-simulated-trading: 1` header — demo only. There is no mainnet code path. |
+| Mainnet / real funds | **Binance:** the adapter refuses to boot against any host that is not `testnet.binancefuture.com` (exact hostname match, lookalikes rejected). **OKX:** there is no separate demo host — the adapter refuses to construct unless `OKX_DEMO=1` and always sends `x-simulated-trading: 1`. Treat OKX as demo-header-only, not a sandbox guarantee. No live order path is wired. |
 | API keys | Only in the server's `.env`. Never sent to the WebView, never logged, never committed (`.gitignore`). |
+| Order API access | `/api/orders/*` requires a shared bearer token (`API_TOKEN`) that only the app bundle carries; CORS is an origin allowlist (`CORS_ORIGINS`). An unauthenticated request cannot preview or execute, even on localhost. It stops drive-by pages and bare `curl`; it is not user authentication, so set a random token and HTTPS for any public deployment. |
 | Accidental order | Voice only creates a **preview**. Executing requires a second gesture: swipe to **Yes**, then tap. The default selection is **No**. |
-| Double execution | The preview ID is single-use, bound to the exact quantity, and expires after 45 s. A second tap cannot send the same order twice. |
+| Double execution | The preview ID is single-use, bound to the exact quantity, and expires after 45 s. A replay gets `409 PREVIEW_USED`, an expired one `410 PREVIEW_EXPIRED`, and the position cannot move twice. |
 | Stale quantity | The server re-reads the position before sending and refuses an order larger than the open position or below the exchange step size. |
 | Rate limits | Mark price arrives over WebSocket (zero REST weight). REST is used only for the initial snapshot, orders and a 12 s fallback. On `-1003` / 429 the server stops **all** REST calls until the ban's own resume timestamp, keeps serving the cached position, and the HUD shows `RATE LIMITED`. |
 | Auto-trading | There is none. Alerts are display-only; nothing fires an order without a human. |
@@ -72,7 +73,7 @@ Even G2 (or the Even Hub simulator)
     ├── push-to-talk: 16 kHz PCM16 from the glasses mic
     └── fetch → Session Guard API (whitelisted origin in app.json)
                  │
-                 ├── POST /api/voice     PCM → Whisper tiny.en → intent
+                 ├── POST /api/voice     PCM → Whisper small.en → intent
                  ├── GET  /api/state     cached position + alert (no exchange call)
                  ├── POST /api/orders/preview   exact qty + token
                  └── POST /api/orders/execute   single-use token
@@ -118,9 +119,11 @@ EXCHANGE=binance
 BINANCE_API_KEY=...
 BINANCE_API_SECRET=...
 SYMBOL=BTCUSDT
+API_TOKEN=...      # openssl rand -hex 16 (the WebView gets the same value at build time)
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
 
-4. Verify access without placing an order:
+4. Verify access without placing an order (uses the same `API_TOKEN`; no token is printed):
 
 ```bash
 npm run check:live
@@ -128,14 +131,17 @@ npm run check:live
 
 Expected: `mode: binance-testnet`, the current position, and `OK — testnet endpoint reachable and signed request accepted.` If you see `mode: mock`, the keys are not in this `.env` (only `.env.example`) or `EXCHANGE` still forces mock.
 
-`npm run check` is the softer version: it also accepts the mock adapter, for development.
+`npm run check` is the softer version: it also accepts the mock adapter, for development. If you deploy the API anywhere, set a random `API_TOKEN`, add the app origin to `CORS_ORIGINS`, and put the API behind HTTPS.
 
 ### 2. Start it
 
 ```bash
-npm run dev      # Vite on :5173 + API on :8787
+npm run dev      # Vite on :5173 + API on :8787 (watch mode, for development)
 npm run sim      # second terminal: evenhub-simulator http://localhost:5173
 ```
+
+For recording, use `npm start` instead: same two servers, but the API runs
+without the file watcher, so an editor autosave cannot restart it mid-take.
 
 The glasses canvas should show the position. Hold the simulator's press control to talk (macOS will ask for microphone permission for your terminal — allow it).
 
@@ -196,7 +202,7 @@ docs/            demo script + feature requests
 
 ## Tests
 
-`npm test` runs 26 checks with no network and no keys: intent parsing (spoken numbers, percent phrasing, refusal of "close all"), step-size flooring, single-use confirmation tokens, alert arming, mark-price recomputation, ban/Retry-After parsing, the non-testnet host guard, and a stubbed Binance testnet that verifies request signing, the reduce-only order payload and error mapping.
+`npm test` runs 35 checks with no network and no keys: intent parsing (spoken numbers, percent phrasing, refusal of "close all"), step-size flooring, alert arming, mark-price recomputation, ban/Retry-After parsing, the non-testnet host guard, and a stubbed Binance testnet that verifies request signing, the reduce-only order payload and error mapping. Route-level tests cover the order auth, preview → execute → replay (`409`), expired (`410`), unknown (`404`), wrong-symbol (`409`), CORS allow/deny, and a 429 that flips the adapter to PAUSED with zero follow-up calls.
 
 ```bash
 npm test
@@ -213,7 +219,7 @@ npm test
 
 Everything in this repo was written during the Even Realities hackathon (23–29 Nov 2026). Pre-existing: the official Even Hub SDK, CLI, simulator and Vite. The Whisper model is a public Hugging Face checkpoint.
 
-Track 03 — Exchanges & Stocks. Testnet only. Not financial advice.
+Track 03 — Exchanges & Stocks. Binance Futures testnet only; OKX runs in demo-header mode. Not financial advice.
 
 ## Docs
 

@@ -19,6 +19,7 @@ export function createAdapter(): ExchangeAdapter {
         config.okx.apiSecret,
         config.okx.passphrase,
         config.okx.baseUrl,
+        config.okx.demo,
       )
     case 'mock':
       return new MockAdapter()

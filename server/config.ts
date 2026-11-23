@@ -28,6 +28,15 @@ export const config = {
   exchange,
   asrProvider: (str('ASR_PROVIDER', 'local').toLowerCase() as AsrProvider),
   asrModel: str('ASR_MODEL', 'onnx-community/whisper-small.en'),
+  // Shared with the WebView (embedded by Vite) and required on order routes.
+  apiToken: str('API_TOKEN', 'dev-local-token'),
+  corsOrigins: str(
+    'CORS_ORIGINS',
+    'http://localhost:5173,http://127.0.0.1:5173,https://session-guard.fly.dev',
+  )
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
   warmAsr: str('WARM_ASR', '1') !== '0',
   binance: {
     baseUrl: str('BINANCE_FUTURES_BASE', 'https://testnet.binancefuture.com'),
@@ -40,6 +49,8 @@ export const config = {
     apiKey: str('OKX_API_KEY'),
     apiSecret: str('OKX_API_SECRET'),
     passphrase: str('OKX_PASSPHRASE'),
+    // OKX demo is a request header, not a separate host; refuse to run without it.
+    demo: str('OKX_DEMO', '1') !== '0',
   },
   openai: {
     apiKey: str('OPENAI_API_KEY'),
