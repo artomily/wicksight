@@ -29,7 +29,9 @@ export class OkxDemoAdapter implements ExchangeAdapter {
     private readonly passphrase: string,
     baseUrl = 'https://www.okx.com',
   ) {
-    assertNonProductionHost(baseUrl, ['okx.com'])
+    // OKX demo is a header, not a host: every request still carries the
+    // x-simulated-trading flag, and only OKX's own host is allowed.
+    assertNonProductionHost(baseUrl, ['www.okx.com', 'okx.com'])
     if (!apiKey || !apiSecret || !passphrase) {
       throw new ExchangeError('OKX_API_KEY / OKX_API_SECRET / OKX_PASSPHRASE are missing in .env', 500, 'NO_KEYS')
     }

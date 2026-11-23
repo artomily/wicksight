@@ -47,14 +47,19 @@ export const config = {
 
 /**
  * Money-safety gate. Every adapter must pass its base URL through this.
- * Session Guard refuses to boot against a production exchange host.
+ * Matching is by exact hostname — `testnet.binancefuture.com.evil.dev` must not
+ * pass just because it contains the testnet host as a prefix.
  */
-export function assertNonProductionHost(url: string, allowedTestnetHints: string[]) {
-  const lowered = url.toLowerCase()
-  const looksTestnet = allowedTestnetHints.some((hint) => lowered.includes(hint))
-  if (!looksTestnet) {
+export function assertNonProductionHost(url: string, allowedHosts: string[]) {
+  let hostname: string
+  try {
+    hostname = new URL(url).hostname.toLowerCase()
+  } catch {
+    throw new Error(`Refusing to use "${url}": not a valid URL.`)
+  }
+  if (!allowedHosts.includes(hostname)) {
     throw new Error(
-      `Refusing to use "${url}". Session Guard only talks to testnet/demo endpoints (expected one of: ${allowedTestnetHints.join(', ')}).`,
+      `Refusing to use "${url}". Session Guard only talks to testnet/demo endpoints (allowed hosts: ${allowedHosts.join(', ')}).`,
     )
   }
 }

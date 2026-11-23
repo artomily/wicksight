@@ -12,7 +12,7 @@ import {
 } from './types.ts'
 
 const BASE = 'https://testnet.binancefuture.com'
-const TESTNET_HINTS = ['testnet.binancefuture.com']
+const TESTNET_HOSTS = ['testnet.binancefuture.com']
 
 interface SymbolRules {
   stepSize: string
@@ -43,7 +43,7 @@ export class BinanceTestnetAdapter implements ExchangeAdapter {
     private readonly apiSecret: string,
     baseUrl: string = BASE,
   ) {
-    assertNonProductionHost(baseUrl, TESTNET_HINTS)
+    assertNonProductionHost(baseUrl, TESTNET_HOSTS)
     if (!apiKey || !apiSecret) {
       throw new ExchangeError('BINANCE_API_KEY / BINANCE_API_SECRET are missing in .env', 500, 'NO_KEYS')
     }

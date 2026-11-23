@@ -34,6 +34,18 @@ Trading sessions are exactly the moment a heads-up display earns its place: you 
 4. Swipe to **Yes**, tap. The order goes to Binance Futures **testnet** and the fill is shown.
 5. Price alert hits → the screen switches to **ALERT HIT** until you tap.
 
+## Who it's for
+
+Active crypto-futures traders who already wear G2 for notifications and navigation, and prop-desk traders who keep one position open through a session. The first version is deliberately single-position: the person who needs this has one trade they care about, not a portfolio to manage from their glasses.
+
+**Why now.** Track 03's own example is this exact flow, and the Even Hub catalogue has messaging, news, AI and navigation apps but no trading app. Testnet-only keeps the first release away from custody and away from financial advice.
+
+**Launch path.**
+
+1. Even Hub catalogue listing — testnet and read-only mainnet.
+2. Read-only mainnet: position, PnL and liquidation only; API keys with trade permission disabled.
+3. Order writing stays behind an explicit exchange/broker review. Session Guard never holds funds.
+
 ## Safety model
 
 This is the part that matters for a trading app.
@@ -146,8 +158,13 @@ Commands understood:
 
 `npm run check` shows the exchange path. `POST /api/intent {"text":"..."}` exercises the parser without audio.
 
-## Project layout
+## Packaging and deployment (optional)
 
+`npm run pack` produces `out.ehpk` (manifest + built `dist`). To run on real glasses the API needs a public HTTPS origin with CORS enabled; add that origin to the `network` whitelist in `app.json`. Keep the testnet keys on that server, never in the app bundle.
+
+The repo is deliberately **local-first**: judges and the owner can run the whole demo with `npm run dev` and the mock adapter, no keys, no hosting.
+
+## Project layout
 ```
 src/
   main.ts        screen state machine, bridge events, polling, voice flow
