@@ -1,0 +1,23 @@
+{
+  "name": "session-guard-video",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Remotion demo video for Session Guard",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts SessionGuard out/session-guard.mp4",
+    "render:draft": "remotion render src/index.ts SessionGuard out/session-guard-draft.mp4 --crf 23",
+    "still": "remotion still src/index.ts SessionGuard"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.545",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "remotion": "^4.0.545"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.9.0"
+  }
+}

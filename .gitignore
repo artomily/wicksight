@@ -31,3 +31,9 @@ dist-ssr
 # Build output
 *.ehpk
 screenshots/
+
+# video build output and owner-provided media
+video/out/
+video/public/music.mp3
+video/public/vo.mp3
+video/public/clips/*.mp4

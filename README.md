@@ -224,4 +224,5 @@ Track 03 — Exchanges & Stocks. Binance Futures testnet only; OKX runs in demo-
 ## Docs
 
 - [3-minute demo script](docs/demo-script.md)
+- [Remotion demo video + recording slots](video/README.md)
 - [Feature requests for Even Realities](docs/feature-requests.md)
