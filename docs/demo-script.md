@@ -69,7 +69,7 @@ Liq 60,279.60 · 5.9% away
 
 **Visual:** cut to a simple diagram (or terminal): WebView → API → testnet. Show `npm run check` + the repo tree for 5 seconds.
 
-**VO:** "The glasses app is TypeScript on the Even Hub SDK. Voice is Whisper, running locally, no cloud. The server holds the key, reads the position every two seconds, and owns the order guard. The whole read path is one request; the write path is one confirmation token."
+**VO:** "The glasses app is TypeScript on the Even Hub SDK. Voice is Whisper, running locally, no cloud. The server holds the key, keeps the position on a WebSocket and owns the order guard. The whole read path is one cached request; the write path is one confirmation token."
 
 ### 2:50 — 3:00 · Close
 

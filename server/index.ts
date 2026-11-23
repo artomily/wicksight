@@ -7,10 +7,14 @@ import { AlertStore, PreviewStore } from './store.ts'
 import { parseIntent } from './intents.ts'
 import { transcribePcm, warmAsr } from './asr.ts'
 import { MockAdapter } from './exchange/mock.ts'
+import { createFeed } from './feed.ts'
 
 const adapter = createAdapter()
 const alerts = new AlertStore()
 const previews = new PreviewStore()
+const feed = createFeed(adapter, config.symbol, {
+  onMark: (mark) => alerts.check(mark),
+})
 let orderInFlight = false
 let lastExecuteAt = 0
 
@@ -60,11 +64,25 @@ app.get('/api/health', async () => ({
   symbol: config.symbol,
   asr: config.asrProvider,
   keys: config.exchange === 'binance' ? config.hasBinanceKeys : config.exchange === 'okx' ? config.hasOkxKeys : null,
+  feed: feed.meta(),
   uptimeSec: Math.round(process.uptime()),
 }))
 
 app.get('/api/state', async (_req, reply) => {
-  const position = await adapter.getPosition(config.symbol)
+  const position = feed.view()
+  const meta = feed.meta()
+
+  if (!position) {
+    // Starting up, or the first snapshot could not be read (e.g. a ban).
+    return reply.status(503).send({
+      error: meta.pausedUntil ? 'PAUSED' : 'NO_DATA',
+      message: meta.pausedUntil
+        ? `Binance paused this IP until ${new Date(meta.pausedUntil).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}.`
+        : 'Waiting for the first position snapshot.',
+      meta,
+    })
+  }
+
   const alert = alerts.check(position.markPrice)
   reply.header('Cache-Control', 'no-store')
   return {
@@ -76,6 +94,10 @@ app.get('/api/state', async (_req, reply) => {
       exchange: position.exchange,
       symbol: config.symbol,
       serverTime: Date.now(),
+      transport: meta.transport,
+      connected: meta.connected,
+      stale: meta.stale,
+      pausedUntil: meta.pausedUntil,
     },
   }
 })
@@ -85,7 +107,10 @@ app.post<{ Body: { price?: unknown } }>('/api/alert', async (req, reply) => {
   if (!Number.isFinite(price) || price <= 0) {
     return reply.status(400).send({ error: 'BAD_PRICE', message: 'Price must be a positive number' })
   }
-  const position = await adapter.getPosition(config.symbol)
+  const position = feed.view()
+  if (!position || position.markPrice <= 0) {
+    return reply.status(503).send({ error: 'NO_DATA', message: 'No live mark price yet' })
+  }
   if (price < position.markPrice * 0.2 || price > position.markPrice * 5) {
     return reply.status(400).send({ error: 'PRICE_RANGE', message: 'Price is too far from the market' })
   }
@@ -120,7 +145,8 @@ app.post<{ Body: { id?: string } }>('/api/orders/execute', async (req, reply) =>
   lastExecuteAt = Date.now()
   try {
     const fill = await adapter.executeCloseHalf(config.symbol, preview.qty)
-    const position = await adapter.getPosition(config.symbol)
+    const position = (await feed.refresh()) ?? feed.view()
+    if (!position) throw new ExchangeError('Order filled but the position refresh failed', 502, 'NO_REFRESH')
     return { fill, position, preview }
   } finally {
     orderInFlight = false
@@ -131,12 +157,7 @@ app.post<{ Body: { text?: string } }>('/api/intent', async (req, reply) => {
   const text = String(req.body?.text ?? '').trim()
   if (!text) return reply.status(400).send({ error: 'NO_TEXT', message: 'Send { "text": "…" }' })
 
-  let markPrice: number | undefined
-  try {
-    markPrice = (await adapter.getPosition(config.symbol)).markPrice
-  } catch {
-    markPrice = undefined
-  }
+  const markPrice = feed.view()?.markPrice
 
   return {
     text,
@@ -153,12 +174,7 @@ app.post('/api/voice', async (req, reply) => {
   }
 
   const transcript = await transcribePcm(pcm)
-  let markPrice: number | undefined
-  try {
-    markPrice = (await adapter.getPosition(config.symbol)).markPrice
-  } catch {
-    markPrice = undefined
-  }
+  const markPrice = feed.view()?.markPrice
 
   const intent = transcript.text
     ? parseIntent(transcript.text, markPrice)
@@ -181,6 +197,7 @@ app.post('/api/dev/reset', async (_req, reply) => {
   return { ok: true }
 })
 
+await feed.start()
 await app.listen({ port: config.port, host: config.host })
 
 const keyState =
@@ -199,6 +216,7 @@ console.log('  Session Guard API')
 console.log(`  mode      ${adapter.mode}  (${keyState})`)
 console.log(`  symbol    ${config.symbol}`)
 console.log(`  asr       ${config.asrProvider}`)
+console.log(`  feed      ${feed.meta().transport}${feed.meta().pausedUntil ? ` (paused until ${new Date(feed.meta().pausedUntil!).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })})` : ''}`)
 console.log(`  listening http://localhost:${config.port}`)
 console.log('  testnet only — production hosts are rejected at boot')
 console.log('')
@@ -207,6 +225,7 @@ if (config.warmAsr) void warmAsr()
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
+    feed.stop()
     void app.close().then(() => process.exit(0))
   })
 }

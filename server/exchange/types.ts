@@ -46,6 +46,8 @@ export interface ExchangeAdapter {
   getPosition(symbol: string): Promise<PositionSnapshot>
   previewCloseHalf(symbol: string): Promise<OrderPreview>
   executeCloseHalf(symbol: string, qty: number): Promise<OrderFill>
+  /** Epoch ms until which REST calls must be suppressed (exchange ban/demo limit). */
+  getPausedUntil?(): number
 }
 
 export class ExchangeError extends Error {

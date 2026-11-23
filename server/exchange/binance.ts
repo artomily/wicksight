@@ -1,5 +1,6 @@
 import { createHmac, randomUUID } from 'node:crypto'
 import { assertNonProductionHost } from '../config.ts'
+import { formatClock, parseBanUntil, parseRetryAfter } from '../recompute.ts'
 import {
   decimalsOf,
   ExchangeError,
@@ -12,7 +13,9 @@ import {
 } from './types.ts'
 
 const BASE = 'https://testnet.binancefuture.com'
+const WS_BASE = 'wss://stream.binancefuture.com'
 const TESTNET_HOSTS = ['testnet.binancefuture.com']
+const TESTNET_WS_HOSTS = ['stream.binancefuture.com']
 
 interface SymbolRules {
   stepSize: string
@@ -36,27 +39,45 @@ interface PositionRiskRow {
 export class BinanceTestnetAdapter implements ExchangeAdapter {
   readonly mode = 'binance-testnet'
   readonly exchange = 'binance'
+  readonly wsBaseUrl: string
   private rules = new Map<string, { value: SymbolRules; at: number }>()
+  private pauseUntil = 0
 
   constructor(
     private readonly apiKey: string,
     private readonly apiSecret: string,
     baseUrl: string = BASE,
+    wsBaseUrl: string = WS_BASE,
   ) {
     assertNonProductionHost(baseUrl, TESTNET_HOSTS)
+    assertNonProductionHost(wsBaseUrl, TESTNET_WS_HOSTS)
     if (!apiKey || !apiSecret) {
       throw new ExchangeError('BINANCE_API_KEY / BINANCE_API_SECRET are missing in .env', 500, 'NO_KEYS')
     }
     this.baseUrl = baseUrl.replace(/\/$/, '')
+    this.wsBaseUrl = wsBaseUrl.replace(/\/$/, '')
   }
 
   private readonly baseUrl: string
+
+  /** Epoch ms until which no REST call may be made. */
+  getPausedUntil(): number {
+    return this.pauseUntil
+  }
+
+  markPriceStreamUrl(symbol: string): string {
+    return `${this.wsBaseUrl}/ws/${symbol.toLowerCase()}@markPrice@1s`
+  }
+
+  userStreamUrl(listenKey: string): string {
+    return `${this.wsBaseUrl}/ws/${listenKey}`
+  }
 
   private sign(query: string): string {
     return createHmac('sha256', this.apiSecret).update(query).digest('hex')
   }
 
-  private async signed<T>(method: 'GET' | 'POST', path: string, params: Record<string, string> = {}): Promise<T> {
+  private async signed<T>(method: 'GET' | 'POST' | 'PUT', path: string, params: Record<string, string> = {}): Promise<T> {
     const query = new URLSearchParams({
       ...params,
       recvWindow: '5000',
@@ -72,7 +93,14 @@ export class BinanceTestnetAdapter implements ExchangeAdapter {
     return this.parse<T>(await this.call(url, 'GET'))
   }
 
-  private async call(url: string, method: 'GET' | 'POST'): Promise<Response> {
+  private async call(url: string, method: 'GET' | 'POST' | 'PUT'): Promise<Response> {
+    if (this.pauseUntil > Date.now()) {
+      throw new ExchangeError(
+        `Binance paused this IP until ${formatClock(this.pauseUntil)}. No requests will be sent until then.`,
+        503,
+        'PAUSED',
+      )
+    }
     try {
       return await fetch(url, {
         method,
@@ -94,6 +122,21 @@ export class BinanceTestnetAdapter implements ExchangeAdapter {
     }
     if (!res.ok) {
       const { code, msg } = body as { code?: number; msg?: string }
+
+      // -1003 / 429 / 418: stop all REST calls until the ban expires.
+      if (code === -1003 || res.status === 429 || res.status === 418) {
+        const until =
+          parseBanUntil(msg ?? '') ??
+          parseRetryAfter(res.headers.get('retry-after')) ??
+          Date.now() + 60_000
+        this.pauseUntil = Math.max(this.pauseUntil, until + 1_000)
+        throw new ExchangeError(
+          `Binance paused this IP until ${formatClock(this.pauseUntil)}. No requests will be sent until then.`,
+          503,
+          'PAUSED',
+        )
+      }
+
       throw new ExchangeError(friendlyBinanceError(code, msg), res.status, String(code ?? 'ERROR'))
     }
     return body as T
@@ -129,9 +172,10 @@ export class BinanceTestnetAdapter implements ExchangeAdapter {
   }
 
   async getPosition(symbol: string): Promise<PositionSnapshot> {
-    const [rows, premium, rules] = await Promise.all([
+    // One signed call + cached symbol rules. Mark price comes along in
+    // positionRisk; the WebSocket takes over from there.
+    const [rows, rules] = await Promise.all([
       this.signed<PositionRiskRow[]>('GET', '/fapi/v2/positionRisk', { symbol }),
-      this.public<{ markPrice: string }>('/fapi/v1/premiumIndex', { symbol }),
       this.symbolRules(symbol),
     ])
 
@@ -141,7 +185,7 @@ export class BinanceTestnetAdapter implements ExchangeAdapter {
     )[0]
     const signedAmt = Number(row?.positionAmt ?? 0)
     const qty = Math.abs(signedAmt)
-    const markPrice = Number(row?.markPrice) || Number(premium.markPrice) || 0
+    const markPrice = Number(row?.markPrice) || 0
     const entryPrice = Number(row?.entryPrice) || 0
     const leverage = Number(row?.leverage) || 1
     const liq = Number(row?.liquidationPrice) || 0
@@ -169,6 +213,19 @@ export class BinanceTestnetAdapter implements ExchangeAdapter {
       exchange: this.exchange,
       updatedAt: Date.now(),
     }
+  }
+
+  /** User data stream key. No signature; the API key header is enough. */
+  async createListenKey(): Promise<string> {
+    const res = await this.call(`${this.baseUrl}/fapi/v1/listenKey`, 'POST')
+    const data = await this.parse<{ listenKey?: string }>(res)
+    if (!data.listenKey) throw new ExchangeError('Binance did not return a listenKey', 502, 'NO_LISTEN_KEY')
+    return data.listenKey
+  }
+
+  async keepAliveListenKey(): Promise<void> {
+    const res = await this.call(`${this.baseUrl}/fapi/v1/listenKey`, 'PUT')
+    await this.parse<Record<string, unknown>>(res)
   }
 
   async previewCloseHalf(symbol: string): Promise<OrderPreview> {

@@ -8,7 +8,7 @@ import {
   type EvenAppBridge,
 } from '@evenrealities/even_hub_sdk'
 import type { OrderPreviewView, StateResponse, VoiceResponse } from '../shared/types'
-import { api } from './api'
+import { ApiError, api } from './api'
 import { VoiceRecorder } from './audio'
 import { compact, ellipsis, fmtPrice, fmtQty } from './format'
 import * as ui from './ui'
@@ -30,6 +30,7 @@ type Screen =
 let screen: Screen = { kind: 'boot' }
 let lastState: StateResponse | null = null
 let offline = false
+let pausedUntil: number | null = null
 let created = false
 let lastTexts = new Map<number, string>()
 let lastPageWriteAt = 0
@@ -120,7 +121,7 @@ function specFor(next: Screen): ui.PageSpec {
     case 'boot':
       return ui.bootPage()
     case 'position':
-      return ui.positionPage(lastState?.position ?? null, alertPrice(), offline)
+      return ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil)
     case 'listening':
       return ui.listeningPage()
     case 'thinking':
@@ -142,7 +143,7 @@ async function show(next: Screen): Promise<void> {
   screen = next
   await enqueue(async () => {
     if (next.kind === 'position' && previous.kind === 'position' && created) {
-      const spec = ui.positionPage(lastState?.position ?? null, alertPrice(), offline)
+      const spec = ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil)
       for (const container of spec.texts) await upgradeText(container)
       return
     }
@@ -160,7 +161,7 @@ async function patchPosition(): Promise<void> {
       return
     }
     if (screen.kind !== 'position') return
-    const spec = ui.positionPage(lastState?.position ?? null, alertPrice(), offline)
+    const spec = ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil)
     for (const container of spec.texts) await upgradeText(container)
   })
 }
@@ -182,6 +183,7 @@ async function pollNow(): Promise<void> {
     const state = await api.state()
     lastState = state
     offline = false
+    pausedUntil = state.meta.pausedUntil ?? null
 
     if (screen.kind === 'boot') {
       await show({ kind: 'position' })
@@ -199,6 +201,12 @@ async function pollNow(): Promise<void> {
     }
   } catch (err) {
     offline = true
+    if (err instanceof ApiError) {
+      if (err.code === 'PAUSED' || err.code === 'NO_DATA') {
+        pausedUntil = err.pausedUntil ?? pausedUntil
+        pollCooldownUntil = Date.now() + 10_000
+      }
+    }
     // Exchange rate limits should not turn into a request storm.
     if (/banned|too many|rate.?limit|429/i.test((err as Error).message)) {
       pollCooldownUntil = Date.now() + 15_000

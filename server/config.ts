@@ -31,6 +31,7 @@ export const config = {
   warmAsr: str('WARM_ASR', '1') !== '0',
   binance: {
     baseUrl: str('BINANCE_FUTURES_BASE', 'https://testnet.binancefuture.com'),
+    wsBaseUrl: str('BINANCE_WS_BASE', 'wss://stream.binancefuture.com'),
     apiKey: str('BINANCE_API_KEY'),
     apiSecret: str('BINANCE_API_SECRET'),
   },

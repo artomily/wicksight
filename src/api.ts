@@ -8,6 +8,18 @@ import type {
 
 export const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://localhost:8787'
 
+export class ApiError extends Error {
+  readonly code: string
+  readonly pausedUntil?: number
+
+  constructor(message: string, code = 'HTTP', pausedUntil?: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.code = code
+    this.pausedUntil = pausedUntil
+  }
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -21,8 +33,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new Error(`Bad response from API (${res.status})`)
   }
   if (!res.ok) {
-    const message = (json as { message?: string } | null)?.message
-    throw new Error(message || `API error ${res.status}`)
+    const body = json as { message?: string; error?: string; meta?: { pausedUntil?: number } } | null
+    throw new ApiError(
+      body?.message || `API error ${res.status}`,
+      body?.error || 'HTTP',
+      body?.meta?.pausedUntil ?? undefined,
+    )
   }
   return json as T
 }

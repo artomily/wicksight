@@ -7,7 +7,12 @@ import { MockAdapter } from './mock.ts'
 export function createAdapter(): ExchangeAdapter {
   switch (config.exchange) {
     case 'binance':
-      return new BinanceTestnetAdapter(config.binance.apiKey, config.binance.apiSecret, config.binance.baseUrl)
+      return new BinanceTestnetAdapter(
+        config.binance.apiKey,
+        config.binance.apiSecret,
+        config.binance.baseUrl,
+        config.binance.wsBaseUrl,
+      )
     case 'okx':
       return new OkxDemoAdapter(
         config.okx.apiKey,

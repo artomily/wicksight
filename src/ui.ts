@@ -58,8 +58,24 @@ interface PositionTexts {
   hint: string
 }
 
-export function positionTexts(position: PositionView | null, alertPrice?: number | null, offline = false): PositionTexts {
+function clock(ts: number): string {
+  return new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+}
+
+export function positionTexts(
+  position: PositionView | null,
+  alertPrice?: number | null,
+  offline = false,
+  pausedUntil?: number | null,
+): PositionTexts {
   if (!position) {
+    if (pausedUntil) {
+      return {
+        status: '○ RATE LIMITED',
+        main: `Binance paused this IP\n\nuntil ${clock(pausedUntil)}\n\nCached data only`,
+        hint: 'Tap to retry',
+      }
+    }
     return {
       status: offline ? '● OFFLINE' : '● CONNECTING',
       main: offline ? "Can't reach server\n\nStart the API\n\nTap to retry" : 'Session Guard\n\nConnecting',
@@ -68,11 +84,13 @@ export function positionTexts(position: PositionView | null, alertPrice?: number
   }
 
   const label = modeLabel(position.mode)
-  const status = offline
-    ? '○ OFFLINE'
-    : alertPrice
-      ? `● ${label} · ALERT ${fmtPrice(alertPrice, 0)}`
-      : `● ${label} · ${position.leverage}x`
+  const status = pausedUntil
+    ? `○ RATE LIMITED · ${clock(pausedUntil)}`
+    : offline
+      ? '○ OFFLINE'
+      : alertPrice
+        ? `● ${label} · ALERT ${fmtPrice(alertPrice, 0)}`
+        : `● ${label} · ${position.leverage}x`
 
   if (!position.hasPosition || !position.side) {
     return {
@@ -100,8 +118,13 @@ export function positionTexts(position: PositionView | null, alertPrice?: number
   }
 }
 
-export function positionPage(position: PositionView | null, alertPrice?: number | null, offline = false): PageSpec {
-  const t = positionTexts(position, alertPrice, offline)
+export function positionPage(
+  position: PositionView | null,
+  alertPrice?: number | null,
+  offline = false,
+  pausedUntil?: number | null,
+): PageSpec {
+  const t = positionTexts(position, alertPrice, offline, pausedUntil)
   return {
     texts: [
       captureLayer(true),

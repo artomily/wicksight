@@ -57,7 +57,7 @@ This is the part that matters for a trading app.
 | Accidental order | Voice only creates a **preview**. Executing requires a second gesture: swipe to **Yes**, then tap. The default selection is **No**. |
 | Double execution | The preview ID is single-use, bound to the exact quantity, and expires after 45 s. A second tap cannot send the same order twice. |
 | Stale quantity | The server re-reads the position before sending and refuses an order larger than the open position or below the exchange step size. |
-| Rate limits | Client backs off for 15 s on `-1003` / 429 instead of hammering the testnet. |
+| Rate limits | Mark price arrives over WebSocket (zero REST weight). REST is used only for the initial snapshot, orders and a 12 s fallback. On `-1003` / 429 the server stops **all** REST calls until the ban's own resume timestamp, keeps serving the cached position, and the HUD shows `RATE LIMITED`. |
 | Auto-trading | There is none. Alerts are display-only; nothing fires an order without a human. |
 | Data | One position, read from the user's own exchange account. No analytics, no third-party sharing. |
 
@@ -73,14 +73,23 @@ Even G2 (or the Even Hub simulator)
     └── fetch → Session Guard API (whitelisted origin in app.json)
                  │
                  ├── POST /api/voice     PCM → Whisper tiny.en → intent
-                 ├── GET  /api/state     position + alert, polled every 2 s
+                 ├── GET  /api/state     cached position + alert (no exchange call)
                  ├── POST /api/orders/preview   exact qty + token
                  └── POST /api/orders/execute   single-use token
                               │
                     Binance Futures TESTNET (default)
-                    OKX demo (adapter fallback)
+                    ├── mark price: WebSocket `<symbol>@markPrice@1s`
+                    ├── position/fills: user data stream (listenKey)
+                    ├── REST: initial snapshot, orders, 12 s fallback poll
+                    └── -1003 / 429: all REST paused until the ban ends
+                    OKX demo (adapter fallback, 12 s poll)
                     Mock paper position (no keys, labelled "MOCK DATA")
 ```
+
+The 2-second client poll hits only the local API. The exchange is read over
+WebSocket, so the HUD stays live without REST weight; if the socket drops, a
+single REST snapshot runs at most every 12 s, and a Binance IP ban stops every
+request until its resume timestamp.
 
 The phone-side page in the simulator (and the WebView on real hardware) shows connection state and a text box that exercises the same intent parser — useful when a demo room is too loud.
 
@@ -169,7 +178,7 @@ The repo is deliberately **local-first**: judges and the owner can run the whole
 ## Project layout
 ```
 src/
-  main.ts        screen state machine, bridge events, polling, voice flow
+  main.ts        screen state machine, bridge events, feed polling, voice flow
   ui.ts          every page as plain container specs (576×288)
   audio.ts       push-to-talk PCM recorder
   api.ts         typed client for the local API
@@ -187,7 +196,7 @@ docs/            demo script + feature requests
 
 ## Tests
 
-`npm test` runs 21 checks with no network and no keys: intent parsing (spoken numbers, percent phrasing, refusal of "close all"), step-size flooring, single-use confirmation tokens, alert arming, the non-testnet host guard, and a stubbed Binance testnet that verifies request signing, the reduce-only order payload and error mapping.
+`npm test` runs 26 checks with no network and no keys: intent parsing (spoken numbers, percent phrasing, refusal of "close all"), step-size flooring, single-use confirmation tokens, alert arming, mark-price recomputation, ban/Retry-After parsing, the non-testnet host guard, and a stubbed Binance testnet that verifies request signing, the reduce-only order payload and error mapping.
 
 ```bash
 npm test
@@ -197,7 +206,7 @@ npm test
 
 - Display: 576×288, one LVGL font, no size/alignment control. Layout is spacing and brightness, measured at a 27 px line pitch.
 - The SDK delivers a single tap as a `sysEvent` with `eventType` 0 omitted (SDK 0.0.16 + simulator 0.9.x). The app handles both that and the documented `textEvent` click.
-- No background. Polling stops when the WebView is suspended; the HUD refreshes on foreground.
+- No background. The WebSocket feed lives on the server, but the WebView is suspended when the app is not in front; the HUD refreshes from the cache on foreground.
 - The simulator is not an emulator; timing, BLE and mic permission differ on hardware.
 
 ## Built during the hackathon

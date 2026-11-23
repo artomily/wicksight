@@ -36,6 +36,10 @@ export interface StateResponse {
     exchange: string
     symbol: string
     serverTime: number
+    transport?: 'ws' | 'poll' | 'mock'
+    connected?: boolean
+    stale?: boolean
+    pausedUntil?: number | null
   }
 }
 
