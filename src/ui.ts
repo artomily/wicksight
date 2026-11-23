@@ -71,7 +71,7 @@ export function positionTexts(position: PositionView | null, alertPrice?: number
   const status = offline
     ? '○ OFFLINE'
     : alertPrice
-      ? `● TESTNET · ALERT ${fmtPrice(alertPrice, 0)}`
+      ? `● ${label} · ALERT ${fmtPrice(alertPrice, 0)}`
       : `● ${label} · ${position.leverage}x`
 
   if (!position.hasPosition || !position.side) {
