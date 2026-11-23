@@ -80,7 +80,7 @@ Even G2 (or the Even Hub simulator)
                     Binance Futures TESTNET (default)
                     ├── mark price: WebSocket `<symbol>@markPrice@1s`
                     ├── position/fills: user data stream (listenKey)
-                    ├── REST: initial snapshot, orders, 12 s fallback poll
+                    ├── REST: initial snapshot, orders, 12 s fallback (5 min heartbeat)
                     └── -1003 / 429: all REST paused until the ban ends
                     OKX demo (adapter fallback, 12 s poll)
                     Mock paper position (no keys, labelled "MOCK DATA")

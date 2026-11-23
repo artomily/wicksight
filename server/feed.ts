@@ -322,9 +322,11 @@ class BinanceFeed implements PositionFeed {
 
     const markOpen = this.markSocket?.readyState === WebSocket.OPEN
     const markFresh = this.lastMarkAt > 0 && Date.now() - this.lastMarkAt < 12_000
-    // A missing snapshot (boot during a ban) must be retried even when the
-    // mark socket is healthy.
-    if (markOpen && markFresh && this.position) return
+    // Retry a missing snapshot (boot during a ban), refresh a stale one once
+    // every 5 minutes in case a user-stream event was missed, and poll while
+    // the mark socket is down.
+    const snapshotOld = !this.position || this.lastSnapshotOk === 0 || Date.now() - this.lastSnapshotOk > 5 * 60_000
+    if (markOpen && markFresh && !snapshotOld) return
     if (Date.now() < this.nextFallbackPollAt) return
 
     this.nextFallbackPollAt = Date.now() + 12_000
