@@ -8,6 +8,7 @@ Copy/paste source for the Even Realities hackathon form. Links marked `TBD`.
 - **Tagline:** See the liquidation coming. Get out of it — from your glasses.
 - **Track:** 03 — Exchanges & Stocks
 - **Repo:** `github.com/artomily/wicksight` (owner publishes before submission)
+- **Live demo:** https://wicksight.vercel.app
 - **Demo video:** `wicksight-final.mp4` — 2:59, 1080p, silent, fully Remotion; the cold open and proof section are labelled replays of the 23 Nov testnet HUD
 - **Team:** solo
 

@@ -28,8 +28,9 @@ The bottom line is the gesture hint (`Hold: speak · 2x exit`) when the ETA is h
 
 ## Links
 
+- **Live demo:** https://wicksight.vercel.app — browser-only `DEMO · REPLAY` on the recorded 23 Nov testnet state; no keys, no exchange calls, no order API.
 - **Demo video (2:59):** [wicksight-final.mp4](https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-final.mp4)
-- **Live demo:** [deploy the static demo on Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fartomily%2Fwicksight) — one click, no keys. Vercel builds `demo.html` with `npm run build:demo`; after it finishes, paste the generated `*.vercel.app` URL here. The demo is browser-only, labelled `DEMO · REPLAY`, and makes no exchange calls.
+- **Deploy your own:** [one-step Vercel import](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fartomily%2Fwicksight) — no env vars; `vercel.json` builds `demo.html` into `dist-demo`.
 
 ## Static demo (Vercel)
 
