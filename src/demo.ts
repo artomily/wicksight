@@ -373,7 +373,7 @@ const shell = (): string => `
       58,684 → 55,591, buffer 4.6% → 9.6%. The after-liq is derived from the recorded
       pre-close position and the exchange's isolated-margin formula; the live app reads both
       values from Binance. <a href="https://github.com/artomily/wicksight" target="_blank" rel="noreferrer">Source on GitHub</a>
-      · <a href="https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-final.mp4" target="_blank" rel="noreferrer">Watch the 2:55 demo</a>.
+      · <a href="https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-final.mp4" target="_blank" rel="noreferrer">Watch the 2:59 demo</a>.
     </p>
 
     <footer class="footer">

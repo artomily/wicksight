@@ -2,6 +2,7 @@ import { AbsoluteFill, Audio, Sequence, staticFile } from 'remotion'
 import { Backdrop } from './components/Backdrop'
 import { CaptionTrack } from './components/CaptionTrack'
 import type { VideoProps } from './config'
+import { ColdOpen } from './scenes/ColdOpen'
 import { CTA } from './scenes/CTA'
 import { Hook } from './scenes/Hook'
 import { Proof } from './scenes/Proof'
@@ -13,6 +14,10 @@ export const WickSight: React.FC<VideoProps> = ({ repo, music, voiceover }) => {
   return (
     <AbsoluteFill style={{ backgroundColor: '#040706' }}>
       <Backdrop />
+
+      <Sequence from={SECTIONS.cold.from} durationInFrames={SECTIONS.cold.duration} name="Cold open">
+        <ColdOpen />
+      </Sequence>
 
       <Sequence from={SECTIONS.hook.from} durationInFrames={SECTIONS.hook.duration} name="Hook">
         <Hook />

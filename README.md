@@ -1,6 +1,8 @@
 # WickSight
 
-A glanceable position guard for **Even G2**, built for the Even Realities hackathon, **Track 03 — Exchanges & Stocks**.
+**See the liquidation coming. Get out of it — from your glasses.**
+
+A glanceable liquidation guard for **Even G2**, built for the Even Realities hackathon, **Track 03 — Exchanges & Stocks**.
 
 You look at your position, not your phone. Three lines on the glasses: position, PnL, distance to liquidation. When the tape is trending toward the liquidation line, a fourth line adds **time**: `LIQ IN ~4m at this pace · buffer 4.6%`. Hold the temple and say **"alert 62,000"** or **"close half"**. Every order needs an explicit **No / Yes** confirmation, and the fill comes back with an **after-action receipt**. Testnet only.
 
@@ -26,7 +28,7 @@ The bottom line is the gesture hint (`Hold: speak · 2x exit`) when the ETA is h
 
 ## Links
 
-- **Demo video (2:55):** [wicksight-final.mp4](https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-final.mp4)
+- **Demo video (2:59):** [wicksight-final.mp4](https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-final.mp4)
 - **Live demo:** [deploy the static demo on Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fartomily%2Fwicksight) — one click, no keys. Vercel builds `demo.html` with `npm run build:demo`; after it finishes, paste the generated `*.vercel.app` URL here. The demo is browser-only, labelled `DEMO · REPLAY`, and makes no exchange calls.
 
 ## Static demo (Vercel)
@@ -39,6 +41,10 @@ Preview it locally:
 npm run build:demo
 npx vite preview --config vite.demo.config.ts
 ```
+
+## Why not just a monitor?
+
+A monitor tells you that you are close to liquidation. That is useful until the moment you need to do something about it. WickSight closes the loop on the same screen: the time-to-liquidation is followed by a voice command, a default-No confirmation, a single-use preview, and a reduce-only close-half on Binance Futures testnet. The receipt is the proof: `Liq 58,684 → 55,591 · buffer 4.6% → 9.6%`. No app switch, no phone unlock, no “now what?” at the worst possible moment.
 
 ## Why
 
