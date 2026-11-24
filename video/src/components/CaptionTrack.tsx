@@ -1,11 +1,13 @@
 import { interpolate, useCurrentFrame } from 'remotion'
-import { CAPTIONS } from '../captions'
+import { CAPTIONS, type Caption } from '../captions'
 import { C, F } from '../theme'
 
 /** Bottom captions for every VO line, readable with sound off. */
-export const CaptionTrack: React.FC = () => {
+export const CaptionTrack: React.FC<{ captions?: Caption[] }> = ({
+  captions = CAPTIONS,
+}) => {
   const frame = useCurrentFrame()
-  const caption = CAPTIONS.find((c) => frame >= c.from && frame < c.to)
+  const caption = captions.find((c) => frame >= c.from && frame < c.to)
   if (!caption) return null
 
   const local = frame - caption.from
