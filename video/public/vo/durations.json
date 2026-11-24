@@ -1,0 +1,32 @@
+{
+ "beat-1": {
+  "seconds": 3.71,
+  "words": 10,
+  "wpm": 161.9
+ },
+ "beat-2": {
+  "seconds": 8.36,
+  "words": 16,
+  "wpm": 114.9
+ },
+ "beat-3": {
+  "seconds": 8.56,
+  "words": 19,
+  "wpm": 133.2
+ },
+ "beat-4": {
+  "seconds": 16.4,
+  "words": 29,
+  "wpm": 106.1
+ },
+ "beat-5": {
+  "seconds": 6.83,
+  "words": 13,
+  "wpm": 114.2
+ },
+ "beat-6": {
+  "seconds": 9.48,
+  "words": 21,
+  "wpm": 132.9
+ }
+}

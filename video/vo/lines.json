@@ -1,0 +1,39 @@
+{
+  "voice": "Daniel (onwK4e9ZLuTAKqWW03F9)",
+  "model": "eleven_v3",
+  "target_wpm": 130,
+  "beats": [
+    {
+      "id": "beat-1",
+      "window": "0-5s",
+      "text": "Four minutes to liquidation. You're not looking at your phone."
+    },
+    {
+      "id": "beat-2",
+      "window": "5-15s",
+      "text": "WickSight puts the position on your glasses. Size, PnL, distance to the line — and time."
+    },
+    {
+      "id": "beat-3",
+      "window": "15-25s",
+      "text": "Say: alert sixty-one thousand five hundred. It arms while the app is open, and fires when the mark hits."
+    },
+    {
+      "id": "beat-4",
+      "window": "25-42s",
+      "text": "Then the decision. Close half. WickSight previews the exact order, sized to the position. Default is No. Swipe to Yes, then tap. Reduce-only, on Binance testnet. Nothing else changes.",
+      "atempo": 1.133
+    },
+    {
+      "id": "beat-5",
+      "window": "42-50s",
+      "text": "The receipt shows what changed. Liquidation moves away, and the buffer nearly doubles."
+    },
+    {
+      "id": "beat-6",
+      "window": "50-60s",
+      "text": "Testnet only. Keys server-side. Every order needs an explicit yes. WickSight. See the liquidation coming — and get out of it.",
+      "atempo": 1.13
+    }
+  ]
+}

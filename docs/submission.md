@@ -9,7 +9,7 @@ Copy/paste source for the Even Realities hackathon form. Links marked `TBD`.
 - **Track:** 03 — Exchanges & Stocks
 - **Repo:** `github.com/artomily/wicksight` (owner publishes before submission)
 - **Live demo:** https://wicksight.vercel.app
-- **Demo video:** `wicksight-final.mp4` — 60s key-features cut, 1080p, silent, captions; full cut: `wicksight-full.mp4` (2:55). Both are labelled replays of the 23 Nov testnet HUD.
+- **Demo video:** `wicksight-final.mp4` — 60s key-features cut, 1080p, English voiceover + 25% music bed, captions; full cut: `wicksight-full.mp4` (2:55). Both are labelled replays of the 23 Nov testnet HUD.
 - **Team:** solo
 
 ## Short description (card)

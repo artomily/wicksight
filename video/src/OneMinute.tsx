@@ -1,4 +1,4 @@
-import { AbsoluteFill, Sequence, interpolate, spring, useCurrentFrame } from 'remotion'
+import { AbsoluteFill, Audio, Sequence, interpolate, spring, staticFile, useCurrentFrame } from 'remotion'
 import { Backdrop } from './components/Backdrop'
 import { CaptionTrack } from './components/CaptionTrack'
 import {
@@ -33,6 +33,40 @@ const SECTIONS_1MIN = {
 } as const
 
 export const DURATION_1MIN = 1800
+
+/**
+ * Voiceover beats, measured from the ElevenLabs renders in `public/vo/`
+ * (30 fps). Each clip starts just after its section begins and is ducked
+ * into the music bed; see `vo/lines.json` for the script.
+ */
+const VO_CLIPS = [
+  { file: 'vo/beat-1.mp3', from: 6, frames: 112 },
+  { file: 'vo/beat-2.mp3', from: 162, frames: 251 },
+  { file: 'vo/beat-3.mp3', from: 462, frames: 257 },
+  { file: 'vo/beat-4.mp3', from: 759, frames: 493 },
+  { file: 'vo/beat-5.mp3', from: 1275, frames: 205 },
+  { file: 'vo/beat-6.mp3', from: 1512, frames: 285 },
+] as const
+
+const DUCK_RAMP = 8
+const MUSIC_LEVEL = 0.25
+const MUSIC_DUCKED = 0.09
+
+/** 25% bed, ducked to 9% under each VO clip with an 8-frame ramp. */
+const musicVolume = (frame: number) => {
+  let duck = 0
+  for (const clip of VO_CLIPS) {
+    const start = clip.from - DUCK_RAMP
+    const end = clip.from + clip.frames + DUCK_RAMP
+    if (frame >= start && frame <= end) {
+      const inRamp = Math.min(1, (frame - start) / DUCK_RAMP)
+      const outRamp = Math.min(1, (end - frame) / DUCK_RAMP)
+      duck = Math.max(duck, Math.min(inRamp, outRamp))
+    }
+  }
+  return MUSIC_LEVEL - (MUSIC_LEVEL - MUSIC_DUCKED) * duck
+}
+
 
 const fade = (frame: number, start: number, end: number, length = 8) =>
   Math.min(
@@ -537,22 +571,25 @@ const End: React.FC<{ repo: string }> = ({ repo }) => {
           position: 'absolute',
           left: 0,
           right: 0,
-          top: 900,
+          top: 862,
           textAlign: 'center',
           fontFamily: F.mono,
-          fontSize: 12,
-          letterSpacing: 2.6,
+          fontSize: 10,
+          letterSpacing: 1.8,
+          lineHeight: 1.9,
           color: C.faint,
           opacity: links,
         }}
       >
         DEMO · REPLAY · NOT FINANCIAL ADVICE
+        <br />
+        MUSIC: “VOLATILE REACTION” — KEVIN MACLEOD (INCOMPETECH.COM) · CC BY 4.0
       </div>
     </>
   )
 }
 
-export const OneMinute: React.FC<VideoProps> = ({ repo }) => {
+export const OneMinute: React.FC<VideoProps> = ({ repo, music, voiceover }) => {
   return (
     <AbsoluteFill style={{ backgroundColor: C.bg }}>
       <Backdrop />
@@ -577,6 +614,20 @@ export const OneMinute: React.FC<VideoProps> = ({ repo }) => {
       </Sequence>
 
       <CaptionTrack captions={CAPTIONS_1MIN} />
+
+      {music ? <Audio src={staticFile('music-60s.mp3')} volume={musicVolume} /> : null}
+      {voiceover
+        ? VO_CLIPS.map((clip) => (
+            <Sequence
+              key={clip.file}
+              from={clip.from}
+              durationInFrames={clip.frames}
+              name={`VO ${clip.file}`}
+            >
+              <Audio src={staticFile(clip.file)} volume={1} />
+            </Sequence>
+          ))
+        : null}
     </AbsoluteFill>
   )
 }
