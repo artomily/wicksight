@@ -24,6 +24,22 @@ The bottom line is the gesture hint (`Hold: speak · 2x exit`) when the ETA is h
 
 *Simulator capture against Binance Futures **testnet**: 0.01 BTCUSDT long, isolated 20x. No keys? The same screens run on a labelled mock position. After a close half the HUD adds the receipt `Liq 58,684 → 55,591 · buffer 4.6% → 9.6%`.*
 
+## Links
+
+- **Demo video (2:55):** [wicksight-final.mp4](https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-final.mp4)
+- **Live demo:** [deploy the static demo on Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fartomily%2Fwicksight) — one click, no keys. Vercel builds `demo.html` with `npm run build:demo`; after it finishes, paste the generated `*.vercel.app` URL here. The demo is browser-only, labelled `DEMO · REPLAY`, and makes no exchange calls.
+
+## Static demo (Vercel)
+
+`npm run build:demo` builds only `demo.html` + `src/demo.ts` into `dist-demo/`. It does not bundle the server, `.env`, the API token or the Even Hub SDK. `vercel.json` points Vercel at that build and serves `/` as the demo; leave every environment variable empty. The page runs the recorded 23 Nov 2026 testnet HUD, with buttons and typed commands standing in for voice, and never calls an exchange or the order API.
+
+Preview it locally:
+
+```bash
+npm run build:demo
+npx vite preview --config vite.demo.config.ts
+```
+
 ## Why
 
 Trading sessions are exactly the moment a heads-up display earns its place: you are watching two numbers, how far price is from liquidation and how fast it is getting there, while your hands are busy and looking down at a phone costs attention. WickSight is not a trading terminal. It is one screen you can read in a glance and two commands you can say in a second.
@@ -219,6 +235,8 @@ src/
   audio.ts       push-to-talk PCM recorder
   api.ts         typed client for the local API
   hostPanel.ts   phone-side status + parser test box
+  demo.ts        browser-only Vercel demo (mock state, no server)
+  demo.css       static demo page styles
 server/
   index.ts       Fastify routes, CORS, order guards
   exchange/      binance.ts (testnet), okx.ts (demo), mock.ts
@@ -229,6 +247,9 @@ server/
   store.ts       alert state + single-use order previews
 shared/types.ts  the JSON contract both sides use
 scripts/check-exchange.ts   setup doctor
+demo.html        static demo entry (Vercel)
+vite.demo.config.ts         demo-only Vite build
+vercel.json     Vercel build/output/rewrite
 docs/            demo script + feature requests
 ```
 

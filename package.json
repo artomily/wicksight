@@ -12,6 +12,7 @@
     "sim:auto": "evenhub-simulator http://localhost:5173 --automation-port 9898",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
     "build": "tsc --noEmit && vite build",
+    "build:demo": "vite build --config vite.demo.config.ts",
     "pack": "npm run build && evenhub pack app.json dist",
     "check": "tsx scripts/check-exchange.ts",
     "test": "node --import tsx --test test/*.test.ts",
