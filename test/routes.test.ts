@@ -6,6 +6,7 @@ import { MockAdapter } from '../server/exchange/mock.ts'
 import { AlertStore, PreviewStore } from '../server/store.ts'
 import type { PositionFeed } from '../server/feed.ts'
 import type { PositionSnapshot } from '../server/exchange/types.ts'
+import { MarkHistory } from '../server/eta.ts'
 
 const TOKEN = 'test-token'
 const AUTH = { authorization: `Bearer ${TOKEN}` }
@@ -15,6 +16,7 @@ interface Harness {
   app: FastifyInstance
   adapter: MockAdapter
   previews: PreviewStore
+  marks: MarkHistory
   position: () => PositionSnapshot | null
 }
 
@@ -22,6 +24,7 @@ async function harness(options: { ttlMs?: number; corsOrigins?: string[] } = {})
   const adapter = new MockAdapter()
   const alerts = new AlertStore()
   const previews = new PreviewStore(options.ttlMs)
+  const marks = new MarkHistory()
   let position: PositionSnapshot | null = await adapter.getPosition('BTCUSDT')
 
   const feed: PositionFeed = {
@@ -46,6 +49,7 @@ async function harness(options: { ttlMs?: number; corsOrigins?: string[] } = {})
     feed,
     alerts,
     previews,
+    marks,
     symbol: 'BTCUSDT',
     apiToken: TOKEN,
     corsOrigins: options.corsOrigins ?? [APP_ORIGIN],
@@ -53,7 +57,7 @@ async function harness(options: { ttlMs?: number; corsOrigins?: string[] } = {})
     keys: null,
   })
 
-  return { app, adapter, previews, position: () => position }
+  return { app, adapter, previews, marks, position: () => position }
 }
 
 test('order routes reject requests without the app token', async () => {
@@ -98,6 +102,13 @@ test('preview then execute halves the position; replay is a clean 409', async ()
     assert.equal(body.fill.executedQty, 0.005)
     assert.equal(body.position.qty, 0.005)
     assert.equal(position()?.qty, 0.005)
+    assert.ok(body.receipt, 'execute returns an after-action receipt')
+    assert.equal(body.receipt.closedQty, 0.005)
+    assert.equal(body.receipt.leftQty, 0.005)
+    assert.ok(body.receipt.liqBefore > 0)
+    assert.ok(body.receipt.liqAfter > 0)
+    assert.ok(body.receipt.bufferBeforePct > 0)
+    assert.ok(body.receipt.bufferAfterPct > 0)
 
     const replay = await app.inject({
       method: 'POST',
@@ -223,6 +234,46 @@ test('state is served from the feed cache without touching the exchange', async 
     assert.equal(res.statusCode, 200)
     assert.equal(res.json().position.qty, 0.01)
     assert.equal(calls, 0)
+  } finally {
+    await app.close()
+  }
+})
+
+test('state includes an ETA when mark ticks trend toward liquidation', async () => {
+  const { app, marks, position } = await harness()
+  try {
+    const now = Date.now()
+    const mark = position()!.markPrice
+    // 3 minutes of clean 1 s ticks, falling 700 USDT/min toward the long's liq.
+    for (let i = 0; i < 181; i++) {
+      marks.push(mark + 2100 - i * (2100 / 180), now - 180_000 + i * 1_000)
+    }
+
+    const res = await app.inject({ method: 'GET', url: '/api/state', headers: { origin: APP_ORIGIN } })
+    assert.equal(res.statusCode, 200)
+    const eta = res.json().eta
+    assert.ok(eta, 'eta is present for a clean trend')
+    assert.ok(eta.minutes > 4 && eta.minutes < 8, `minutes was ${eta.minutes}`)
+    assert.ok(eta.bufferPct > 0)
+    assert.ok(eta.confidence > 0.9)
+  } finally {
+    await app.close()
+  }
+})
+
+test('state hides the ETA when price is moving away', async () => {
+  const { app, marks, position } = await harness()
+  try {
+    const now = Date.now()
+    const mark = position()!.markPrice
+    // A long with price climbing away from the liq line.
+    for (let i = 0; i < 181; i++) {
+      marks.push(mark - 2100 + i * (2100 / 180), now - 180_000 + i * 1_000)
+    }
+
+    const res = await app.inject({ method: 'GET', url: '/api/state', headers: { origin: APP_ORIGIN } })
+    assert.equal(res.statusCode, 200)
+    assert.equal(res.json().eta, null)
   } finally {
     await app.close()
   }

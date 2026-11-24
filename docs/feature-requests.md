@@ -1,10 +1,10 @@
 # Feature requests for Even Realities
 
-Observations from building Session Guard on Even Hub SDK 0.0.16 with simulator 0.9.3. Ordered by impact on a trading/alerting app.
+Observations from building WickSight on Even Hub SDK 0.0.16 with simulator 0.9.3. Ordered by impact on a trading/alerting app.
 
 ## 1. An always-available one-line slot (complication)
 
-**Problem.** Even G2 shows one app at a time and a backgrounded app cannot display or notify. For a price alert this is the whole product: the alert is only useful when the user is *not* looking at the app. Our alert screen can only appear if Session Guard is already the foreground app.
+**Problem.** Even G2 shows one app at a time and a backgrounded app cannot display or notify. For a price alert this is the whole product: the alert is only useful when the user is *not* looking at the app. Our alert screen can only appear if WickSight is already the foreground app.
 
 **Ask.** An opt-in "complication" slot — one line of text (or a small 576×32 strip) that a whitelisted app can update at a low cadence (e.g. once a minute) while another app is in front. User-controlled, revocable per app, with a visible indicator. Alternatively, a narrowly scoped notification API for price/alert apps, rate-limited and user-approved.
 

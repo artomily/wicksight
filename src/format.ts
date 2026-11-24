@@ -21,6 +21,13 @@ export function fmtPct(value: number, decimals = 1): string {
   return `${fmtSigned(value, decimals)}%`
 }
 
+/** "~4m" / "~1.3h" for the time-to-liquidation line. */
+export function formatEta(minutes: number): string {
+  if (!Number.isFinite(minutes) || minutes < 1) return '<1m'
+  if (minutes < 60) return `~${Math.round(minutes)}m`
+  return `~${(minutes / 60).toFixed(1)}h`
+}
+
 export function modeLabel(mode: string): string {
   switch (mode) {
     case 'binance-testnet':

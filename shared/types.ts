@@ -27,9 +27,19 @@ export interface AlertView {
   triggeredAt: number | null
 }
 
+export interface LiqEtaView {
+  minutes: number
+  speedPerMin: number
+  bufferPct: number
+  samples: number
+  confidence: number
+}
+
 export interface StateResponse {
   position: PositionView
   alert: AlertView | null
+  /** Time-to-liquidation estimate, or null when the tape is flat/noisy/away. */
+  eta: LiqEtaView | null
   meta: {
     testnetOnly: boolean
     mode: string
@@ -61,6 +71,18 @@ export interface OrderFillView {
   avgPrice: number
   qtyDecimals: number
   at: number
+}
+
+export interface CloseReceiptView {
+  symbol: string
+  side: Side
+  closedQty: number
+  avgPrice: number
+  leftQty: number
+  liqBefore: number | null
+  liqAfter: number | null
+  bufferBeforePct: number | null
+  bufferAfterPct: number | null
 }
 
 export type VoiceIntentView =

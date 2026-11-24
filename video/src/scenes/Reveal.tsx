@@ -1,8 +1,11 @@
 import { interpolate, spring, useCurrentFrame } from 'remotion'
 import { CLAMP } from '../anim'
 import { DeviceFrame } from '../components/DeviceFrame'
+import { fmtPct, fmtSigned } from '../format'
 import { C, F } from '../theme'
 import { FPS } from '../timeline'
+
+const MARGIN = (61492.88 * 0.01) / 20
 
 const Callout: React.FC<{
   delay: number
@@ -72,8 +75,12 @@ export const Reveal: React.FC = () => {
   const enter = spring({ frame, fps: FPS, config: { damping: 200, mass: 0.7 } })
   const reveal = interpolate(frame, [16, 54], [0, 1], CLAMP)
   const zoom = interpolate(frame, [520, 600], [1, 1.025], CLAMP)
-  const pnl = 9.64 + Math.sin(frame / 11) * 0.9 + Math.sin(frame / 3.4) * 0.12
-  const pnlLabel = `+${pnl.toFixed(2)}`
+
+  // The captured position, replayed: the same entry, liquidation and the
+  // recorded −0.06 USDT mark. No live market data is implied.
+  const pnl = -0.06
+  const pnlLabel = fmtSigned(pnl)
+  const roeLabel = fmtPct((pnl / MARGIN) * 100)
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
@@ -91,7 +98,7 @@ export const Reveal: React.FC = () => {
           opacity: interpolate(frame, [0, 14], [0, 1], CLAMP),
         }}
       >
-        SESSION GUARD · EVEN G2
+        WICKSIGHT · EVEN G2
       </div>
 
       <div
@@ -109,7 +116,7 @@ export const Reveal: React.FC = () => {
           arms={false}
           reveal={reveal}
           pnl={pnlLabel}
-          roe="+30.5"
+          roe={roeLabel}
           qty="0.01"
           mark="58,684.4"
           distance="4.6"
@@ -118,8 +125,23 @@ export const Reveal: React.FC = () => {
       </div>
 
       <Callout delay={176} y={332} label="POSITION" value="BTCUSDT · LONG · 20x" />
-      <Callout delay={232} y={450} label="PNL / ROE" value={`${pnlLabel} USDT · +30.5%`} />
+      <Callout delay={232} y={450} label="PNL / ROE" value={`${pnlLabel} USDT · ${roeLabel}`} />
       <Callout delay={288} y={568} label="LIQUIDATION" value="58,684.4 · 4.6% away" />
+
+      <div
+        style={{
+          position: 'absolute',
+          left: 170,
+          top: 800,
+          fontFamily: F.mono,
+          fontSize: 11,
+          letterSpacing: 1.8,
+          color: C.faint,
+          opacity: interpolate(frame, [300, 340], [0, 1], CLAMP),
+        }}
+      >
+        HUD RECONSTRUCTION FROM THE RECORDED 23 NOV TESTNET STATE
+      </div>
 
       <div
         style={{
@@ -160,7 +182,7 @@ export const Reveal: React.FC = () => {
             boxShadow: `0 0 12px ${C.green}`,
           }}
         />
-        LIVE
+        TESTNET · REPLAY
       </div>
     </div>
   )

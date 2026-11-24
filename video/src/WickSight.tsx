@@ -9,7 +9,7 @@ import { Reveal } from './scenes/Reveal'
 import { Safety } from './scenes/Safety'
 import { SECTIONS } from './timeline'
 
-export const SessionGuard: React.FC<VideoProps> = ({ repo, music, voiceover }) => {
+export const WickSight: React.FC<VideoProps> = ({ repo, music, voiceover }) => {
   return (
     <AbsoluteFill style={{ backgroundColor: '#040706' }}>
       <Backdrop />

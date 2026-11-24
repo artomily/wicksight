@@ -1,4 +1,5 @@
 import type {
+  CloseReceiptView,
   OrderFillView,
   OrderPreviewView,
   PositionView,
@@ -80,12 +81,14 @@ export const api = {
     }),
 
   executeCloseHalf: (id: string) =>
-    request<{ fill: OrderFillView; position: PositionView; preview: OrderPreviewView }>(
-      '/api/orders/execute',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...orderAuth() },
-        body: JSON.stringify({ id }),
-      },
-    ),
+    request<{
+      fill: OrderFillView
+      position: PositionView
+      preview: OrderPreviewView
+      receipt: CloseReceiptView | null
+    }>('/api/orders/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...orderAuth() },
+      body: JSON.stringify({ id }),
+    }),
 }

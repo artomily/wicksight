@@ -8,12 +8,15 @@ import type { PositionFeed } from './feed.ts'
 import type { AlertStore, PreviewStore } from './store.ts'
 import { parseIntent } from './intents.ts'
 import { transcribePcm } from './asr.ts'
+import { computeLiqEta, type MarkHistory } from './eta.ts'
+import { buildCloseReceipt } from './receipt.ts'
 
 export interface AppDeps {
   adapter: ExchangeAdapter
   feed: PositionFeed
   alerts: AlertStore
   previews: PreviewStore
+  marks: MarkHistory
   symbol: string
   apiToken: string
   corsOrigins: string[]
@@ -84,7 +87,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   })
 
   app.get('/', async () => ({
-    name: 'Session Guard API',
+    name: 'WickSight API',
     mode: adapter.mode,
     symbol,
     testnetOnly: true,
@@ -115,10 +118,12 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     }
 
     const alert = alerts.check(position.markPrice)
+    const eta = computeLiqEta(deps.marks.snapshot(), position)
     reply.header('Cache-Control', 'no-store')
     return {
       position,
       alert,
+      eta,
       meta: {
         testnetOnly: true,
         mode: position.mode,
@@ -181,10 +186,12 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
       orderInFlight = true
       try {
+        const before = feed.view()
         const fill = await adapter.executeCloseHalf(symbol, preview.qty)
         const position = (await feed.refresh()) ?? feed.view()
         if (!position) throw new ExchangeError('Order filled but the position refresh failed', 502, 'NO_REFRESH')
-        return { fill, position, preview }
+        const receipt = buildCloseReceipt(before, position, fill)
+        return { fill, position, preview, receipt }
       } finally {
         orderInFlight = false
       }

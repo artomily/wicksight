@@ -1,11 +1,49 @@
-import { Img, OffthreadVideo, interpolate, spring, staticFile, useCurrentFrame } from 'remotion'
+import { interpolate, spring, useCurrentFrame } from 'remotion'
 import { CLAMP } from '../anim'
 import { PROOF_SLOTS, type ProofSlot } from '../config'
+import { HudReplay } from '../components/HudReplay'
 import { C, F } from '../theme'
 import { FPS } from '../timeline'
 
 const IMG_W = 1152
 const IMG_H = 576
+
+/** A typed transcript of what the glasses heard, so the voice beat reads muted. */
+const Heard: React.FC<{ localFrame: number; text: string }> = ({ localFrame, text }) => {
+  const progress = interpolate(localFrame, [26, 78], [0, 1], CLAMP)
+  const shown = text.slice(0, Math.floor(progress * text.length))
+  const done = progress >= 1
+  const cursor = localFrame % 30 < 16 ? 1 : 0
+  const fadeIn = interpolate(localFrame, [20, 32], [0, 1], CLAMP)
+
+  return (
+    <div style={{ marginTop: 30, opacity: fadeIn }}>
+      <div
+        style={{
+          fontFamily: F.mono,
+          fontSize: 11,
+          letterSpacing: 2.4,
+          color: C.faint,
+        }}
+      >
+        HEARD
+      </div>
+      <div
+        style={{
+          marginTop: 8,
+          fontFamily: F.mono,
+          fontSize: 17,
+          letterSpacing: 0.4,
+          color: C.green,
+          whiteSpace: 'pre',
+        }}
+      >
+        {`"${shown}`}
+        {done ? '"' : <span style={{ opacity: cursor }}>|</span>}
+      </div>
+    </div>
+  )
+}
 
 const ProofScene: React.FC<{ slot: ProofSlot; localFrame: number; index: number }> = ({
   slot,
@@ -17,19 +55,15 @@ const ProofScene: React.FC<{ slot: ProofSlot; localFrame: number; index: number 
     fps: FPS,
     config: { damping: 200, mass: 0.6 },
   })
-  const ken = interpolate(localFrame, [0, slot.durationInFrames], [1.02, 1], CLAMP)
   const panelIn = spring({
     frame: localFrame - 10,
     fps: FPS,
     config: { damping: 200, mass: 0.6 },
   })
 
-  const highlightIn = interpolate(localFrame, [20, 34], [0, 1], CLAMP)
-  const pulse = 0.55 + 0.3 * Math.abs(Math.sin(localFrame / 14))
-
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
-      {/* simulator window */}
+      {/* simulator window — a replay of the glasses canvas, not a recording */}
       <div
         style={{
           position: 'absolute',
@@ -77,7 +111,7 @@ const ProofScene: React.FC<{ slot: ProofSlot; localFrame: number; index: number 
               color: C.faint,
             }}
           >
-            EVEN HUB SIMULATOR · 576 × 288
+            EVEN HUB · HUD REPLAY · 576 × 288
           </span>
           <span
             style={{
@@ -88,8 +122,8 @@ const ProofScene: React.FC<{ slot: ProofSlot; localFrame: number; index: number 
               fontFamily: F.mono,
               fontSize: 12,
               letterSpacing: 2,
-              color: C.red,
-              opacity: 0.8,
+              color: C.green,
+              opacity: 0.85,
             }}
           >
             <span
@@ -97,11 +131,11 @@ const ProofScene: React.FC<{ slot: ProofSlot; localFrame: number; index: number 
                 width: 7,
                 height: 7,
                 borderRadius: 4,
-                background: C.red,
-                boxShadow: `0 0 10px ${C.red}`,
+                background: C.green,
+                boxShadow: `0 0 10px ${C.green}`,
               }}
             />
-            REC
+            REPLAY
           </span>
         </div>
 
@@ -119,110 +153,14 @@ const ProofScene: React.FC<{ slot: ProofSlot; localFrame: number; index: number 
         >
           <div
             style={{
-              width: '100%',
-              height: '100%',
-              transform: `scale(${ken})`,
-              transformOrigin: 'center center',
+              width: 576,
+              height: 288,
+              transform: 'scale(2)',
+              transformOrigin: 'top left',
             }}
           >
-            {slot.kind === 'video' ? (
-              <OffthreadVideo
-                src={staticFile(slot.src)}
-                muted
-                style={{ width: IMG_W, height: IMG_H, objectFit: 'cover' }}
-              />
-            ) : (
-              <Img
-                src={staticFile(slot.src)}
-                style={{ width: IMG_W, height: IMG_H, imageRendering: 'pixelated' }}
-              />
-            )}
+            <HudReplay slot={slot.id} localFrame={localFrame} />
           </div>
-
-          {slot.highlight ? (
-            <div
-              style={{
-                position: 'absolute',
-                left: slot.highlight.x * 2,
-                top: slot.highlight.y * 2,
-                width: slot.highlight.w * 2,
-                height: slot.highlight.h * 2,
-                border: `2px solid ${C.green}`,
-                borderRadius: 8,
-                boxShadow: `0 0 24px rgba(70,224,138,0.45)`,
-                opacity: highlightIn * pulse,
-              }}
-            >
-              {slot.highlight.label ? (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: -30,
-                    padding: '3px 10px',
-                    background: 'rgba(4,12,8,0.92)',
-                    border: `1px solid ${C.green}`,
-                    borderRadius: 4,
-                    fontFamily: F.mono,
-                    fontSize: 12,
-                    letterSpacing: 2,
-                    color: C.green,
-                    whiteSpace: 'nowrap',
-                    opacity: highlightIn,
-                  }}
-                >
-                  {slot.highlight.label}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          {slot.waveform ? (
-            <div
-              style={{
-                position: 'absolute',
-                right: 40,
-                top: 196,
-                width: 420,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-end',
-                gap: 12,
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: F.mono,
-                  fontSize: 11,
-                  letterSpacing: 2.4,
-                  color: C.green,
-                  opacity: 0.7,
-                }}
-              >
-                16 kHz · LIVE
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 92 }}>
-                {Array.from({ length: 24 }).map((_, i) => {
-                  const h =
-                    10 +
-                    Math.abs(Math.sin(localFrame / 3.2 + i * 0.55)) *
-                      (24 + 52 * Math.abs(Math.sin(i * 0.7)))
-                  return (
-                    <span
-                      key={i}
-                      style={{
-                        width: 5,
-                        height: h,
-                        borderRadius: 3,
-                        background: C.green,
-                        opacity: 0.35 + 0.5 * Math.abs(Math.sin(localFrame / 5 + i * 0.4)),
-                      }}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          ) : null}
 
           <div
             style={{
@@ -239,15 +177,19 @@ const ProofScene: React.FC<{ slot: ProofSlot; localFrame: number; index: number 
           style={{
             position: 'absolute',
             left: 34,
+            right: 34,
             bottom: 12,
+            display: 'flex',
+            justifyContent: 'space-between',
             fontFamily: F.mono,
             fontSize: 11,
-            letterSpacing: 2,
+            letterSpacing: 1.8,
             color: C.faint,
-            opacity: 0.7,
+            opacity: 0.75,
           }}
         >
-          REAL SIMULATOR CAPTURE · BINANCE FUTURES TESTNET
+          <span>REPLAY · RECORDED TESTNET HUD · 23 NOV 2026</span>
+          <span style={{ color: C.greenDim }}>NO LIVE MARKET DATA</span>
         </div>
       </div>
 
@@ -273,7 +215,7 @@ const ProofScene: React.FC<{ slot: ProofSlot; localFrame: number; index: number 
           }}
         >
           <span style={{ color: C.green }}>{slot.step}</span>
-          <span style={{ color: C.faint }}>REAL PROOF</span>
+          <span style={{ color: C.faint }}>TESTNET PROOF · REPLAY</span>
         </div>
 
         <div
@@ -312,7 +254,7 @@ const ProofScene: React.FC<{ slot: ProofSlot; localFrame: number; index: number 
           {slot.title}
         </div>
 
-        <div style={{ marginTop: 44, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ marginTop: 40, display: 'flex', flexDirection: 'column', gap: 18 }}>
           {slot.chips.map((chip, chipIndex) => {
             const p = spring({
               frame: localFrame - 24 - chipIndex * 9,
@@ -355,7 +297,9 @@ const ProofScene: React.FC<{ slot: ProofSlot; localFrame: number; index: number 
           })}
         </div>
 
-        <div style={{ display: 'flex', gap: 6, marginTop: 54 }}>
+        {slot.id === 'voice' ? <Heard localFrame={localFrame} text="alert 61,500" /> : null}
+
+        <div style={{ display: 'flex', gap: 6, marginTop: 40 }}>
           {PROOF_SLOTS.map((_, segment) => (
             <span
               key={segment}

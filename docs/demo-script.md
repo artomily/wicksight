@@ -1,5 +1,10 @@
 # 3-minute demo script
 
+> **The final submission video is fully Remotion and does not use this recording flow.**
+> See [`video/README.md`](../video/README.md): the proof beats are a labelled
+> replay of the 23 Nov 2026 testnet captures, so no simulator recording is
+> needed. This script remains for a live walkthrough or a future live cut.
+
 Target: **2:55**. Record in the Even Hub simulator at 576×288, screen-recorded cleanly; voice live.
 
 ## Before recording (10 minutes)
@@ -20,7 +25,7 @@ Target: **2:55**. Record in the Even Hub simulator at 576×288, screen-recorded 
 
 **Visual:** the three-line HUD, live PnL ticking.
 
-**VO:** "You're in a trade. The number that decides whether you sleep tonight is how far price is from liquidation. Checking that on your phone costs you the setup. This is Session Guard, on Even G2."
+**VO:** "You're in a trade. The number that decides whether you sleep tonight is how far price is from liquidation. Checking that on your phone costs you the setup. This is WickSight, on Even G2."
 
 ### 0:15 — 0:45 · The glance
 
@@ -76,7 +81,7 @@ Liq 60,279.60 · 5.9% away
 
 **Visual:** HUD, alert armed, then the repo URL.
 
-**VO:** "One position. One screen. Act in seconds — without leaving the trade. Session Guard, Track 03."
+**VO:** "One position. One screen. Act in seconds — without leaving the trade. WickSight, Track 03."
 
 ## Fallbacks
 

@@ -1,37 +1,65 @@
-# Session Guard
+# WickSight
 
 A glanceable position guard for **Even G2**, built for the Even Realities hackathon, **Track 03 — Exchanges & Stocks**.
 
-You look at your position, not your phone. Three lines on the glasses: position, PnL, distance to liquidation. Hold the temple and say **"alert 62,000"** or **"close half"**. Every order needs an explicit **No / Yes** confirmation. Testnet only.
+You look at your position, not your phone. Three lines on the glasses: position, PnL, distance to liquidation. When the tape is trending toward the liquidation line, a fourth line adds **time**: `LIQ IN ~4m at this pace · buffer 4.6%`. Hold the temple and say **"alert 62,000"** or **"close half"**. Every order needs an explicit **No / Yes** confirmation, and the fill comes back with an **after-action receipt**. Testnet only.
 
 ```
 ● BINANCE TESTNET · 20x
 
 BTCUSDT LONG 0.01 · 20x
 
-PnL +9.64 USDT · ROE +30.5%
+PnL -0.06 USDT · ROE -0.2%
 
 Liq 58,684.4 · 4.6% away
 
-Hold: speak · 2x exit
+LIQ IN ~4m at this pace · buffer 4.6%
 ```
+
+The bottom line is the gesture hint (`Hold: speak · 2x exit`) when the ETA is hidden.
 
 | Glance | Confirm (default No) | Filled |
 |---|---|---|
 | ![](docs/img/position.png) | ![](docs/img/confirm.png) | ![](docs/img/filled.png) |
 
-*Simulator capture against Binance Futures **testnet**: 0.01 BTCUSDT long, isolated 20x. No keys? The same screens run on a labelled mock position.*
+*Simulator capture against Binance Futures **testnet**: 0.01 BTCUSDT long, isolated 20x. No keys? The same screens run on a labelled mock position. After a close half the HUD adds the receipt `Liq 58,684 → 55,591 · buffer 4.6% → 9.6%`.*
 
 ## Why
 
-Trading sessions are exactly the moment a heads-up display earns its place: you are watching one number, your hands are busy, and looking down at a phone costs attention. Session Guard is not a trading terminal. It is one screen you can read in a glance and two commands you can say in a second.
+Trading sessions are exactly the moment a heads-up display earns its place: you are watching two numbers, how far price is from liquidation and how fast it is getting there, while your hands are busy and looking down at a phone costs attention. WickSight is not a trading terminal. It is one screen you can read in a glance and two commands you can say in a second.
+
+## Time to liquidation
+
+The HUD already shows the static distance. WickSight also fits the last three minutes of 1 s mark ticks and turns the slope into a pace:
+
+```
+LIQ IN ~4m at this pace · buffer 4.6%
+```
+
+- **Only when it is honest.** The line is hidden when price is moving away, when the fit is flat, when the last three minutes are too noisy (R² below 0.2), when there are fewer than 30 ticks, or when the estimate is more than four hours out.
+- **No new exchange calls.** The tick ring lives in the server process next to the WebSocket feed; `/api/state` computes the ETA from the cached marks. During a Binance ban the ring drains and the line simply disappears.
+- **Read it as an estimate, not a promise.** It is a linear pace from a short window, not a forecast.
+
+## After-action receipt
+
+A close half is only useful if the user can see that it changed the risk. The execute response carries a receipt built from the position before the order and the refreshed position after it:
+
+```
+● FILLED
+Closed half
+Liq 58,684 → 55,591 · buffer 4.6% → 9.6%
+Sold 0.005 BTCUSDT @ 61,502.9
+Left 0.005
+```
+
+The values come from the exchange snapshots, not from the order preview; if Binance returns no liquidation price, the line says `—` instead of inventing one.
 
 ## Demo flow (20 seconds)
 
-1. The glasses show the open position, live PnL and liquidation distance.
+1. The glasses show the open position, live PnL, liquidation distance, and — when the tape is trending toward the line — `LIQ IN ~4m at this pace`.
 2. Hold the temple → **"alert 62,000"** → release. The alert is armed while the app is open.
 3. Hold again → **"close half"** → the confirm screen shows **No, keep 0.010** and **Yes, sell 0.005**.
-4. Swipe to **Yes**, tap. The order goes to Binance Futures **testnet** and the fill is shown.
+4. Swipe to **Yes**, tap. The order goes to Binance Futures **testnet**; the fill is shown with the after-action receipt (`Liq 58,684 → 55,591 · buffer 4.6% → 9.6%`).
 5. Price alert hits → the screen switches to **ALERT HIT** until you tap.
 
 ## Who it's for
@@ -44,7 +72,7 @@ Active crypto-futures traders who already wear G2 for notifications and navigati
 
 1. Even Hub catalogue listing — testnet and read-only mainnet.
 2. Read-only mainnet: position, PnL and liquidation only; API keys with trade permission disabled.
-3. Order writing stays behind an explicit exchange/broker review. Session Guard never holds funds.
+3. Order writing stays behind an explicit exchange/broker review. WickSight never holds funds.
 
 ## Safety model
 
@@ -58,6 +86,8 @@ This is the part that matters for a trading app.
 | Accidental order | Voice only creates a **preview**. Executing requires a second gesture: swipe to **Yes**, then tap. The default selection is **No**. |
 | Double execution | The preview ID is single-use, bound to the exact quantity, and expires after 45 s. A replay gets `409 PREVIEW_USED`, an expired one `410 PREVIEW_EXPIRED`, and the position cannot move twice. |
 | Stale quantity | The server re-reads the position before sending and refuses an order larger than the open position or below the exchange step size. |
+| ETA | A display-only linear fit of the last three minutes of mark ticks. It is hidden when price moves away, when the fit is flat or noisy, and when the estimate is over four hours. It is not a liquidation prediction. |
+| Receipt | Built from the cached position before the order and the exchange position after it. A missing liquidation price renders as `—`, never as an invented number. |
 | Rate limits | Mark price arrives over WebSocket (zero REST weight). REST is used only for the initial snapshot, orders and a 12 s fallback. On `-1003` / 429 the server stops **all** REST calls until the ban's own resume timestamp, keeps serving the cached position, and the HUD shows `RATE LIMITED`. |
 | Auto-trading | There is none. Alerts are display-only; nothing fires an order without a human. |
 | Data | One position, read from the user's own exchange account. No analytics, no third-party sharing. |
@@ -69,14 +99,14 @@ Alerts only fire **while the app is open** — Even G2 shows one app at a time a
 ```
 Even G2 (or the Even Hub simulator)
 └── WebView app — Vite + TypeScript + @evenrealities/even_hub_sdk
-    ├── 3-line HUD (576×288), textContainerUpgrade for live values
+    ├── 3-line HUD + ETA hint (576×288), textContainerUpgrade for live values
     ├── push-to-talk: 16 kHz PCM16 from the glasses mic
-    └── fetch → Session Guard API (whitelisted origin in app.json)
+    └── fetch → WickSight API (whitelisted origin in app.json)
                  │
                  ├── POST /api/voice     PCM → Whisper small.en → intent
-                 ├── GET  /api/state     cached position + alert (no exchange call)
+                 ├── GET  /api/state     cached position + alert + ETA (no exchange call)
                  ├── POST /api/orders/preview   exact qty + token
-                 └── POST /api/orders/execute   single-use token
+                 └── POST /api/orders/execute   single-use token → fill + receipt
                               │
                     Binance Futures TESTNET (default)
                     ├── mark price: WebSocket `<symbol>@markPrice@1s`
@@ -103,7 +133,7 @@ npm install -g @evenrealities/evenhub-cli @evenrealities/evenhub-simulator
 ```
 
 ```bash
-git clone <your-fork> session-guard && cd session-guard
+git clone <your-fork> wicksight && cd wicksight
 npm install
 cp .env.example .env
 ```
@@ -192,6 +222,8 @@ src/
 server/
   index.ts       Fastify routes, CORS, order guards
   exchange/      binance.ts (testnet), okx.ts (demo), mock.ts
+  eta.ts         mark-tick ring + time-to-liquidation fit
+  receipt.ts     before/after close-half receipt
   asr.ts         local Whisper / optional OpenAI
   intents.ts     deterministic voice intent parser
   store.ts       alert state + single-use order previews
@@ -202,7 +234,7 @@ docs/            demo script + feature requests
 
 ## Tests
 
-`npm test` runs 35 checks with no network and no keys: intent parsing (spoken numbers, percent phrasing, refusal of "close all"), step-size flooring, alert arming, mark-price recomputation, ban/Retry-After parsing, the non-testnet host guard, and a stubbed Binance testnet that verifies request signing, the reduce-only order payload and error mapping. Route-level tests cover the order auth, preview → execute → replay (`409`), expired (`410`), unknown (`404`), wrong-symbol (`409`), CORS allow/deny, and a 429 that flips the adapter to PAUSED with zero follow-up calls.
+`npm test` runs 50 checks with no network and no keys: intent parsing (spoken numbers, percent phrasing, refusal of "close all"), step-size flooring, alert arming, mark-price recomputation, ban/Retry-After parsing, the non-testnet host guard, the ETA fit (trend toward/away, flat/noisy, too few ticks, past the line, four-hour cap), the after-action receipt (before/after liq, missing liq, buffer fallback), and a stubbed Binance testnet that verifies request signing, the reduce-only order payload and error mapping. Route-level tests cover the order auth, preview → execute → replay (`409`) with receipt, expired (`410`), unknown (`404`), wrong-symbol (`409`), CORS allow/deny, a 429 that flips the adapter to PAUSED with zero follow-up calls, and `/api/state` returning an ETA only on a clean trend.
 
 ```bash
 npm test
@@ -224,5 +256,5 @@ Track 03 — Exchanges & Stocks. Binance Futures testnet only; OKX runs in demo-
 ## Docs
 
 - [3-minute demo script](docs/demo-script.md)
-- [Remotion demo video + recording slots](video/README.md)
+- [Remotion demo video (7 replay beats)](video/README.md)
 - [Feature requests for Even Realities](docs/feature-requests.md)

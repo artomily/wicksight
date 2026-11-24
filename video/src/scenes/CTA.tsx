@@ -50,7 +50,7 @@ export const CTA: React.FC<{ repo: string }> = ({ repo }) => {
             textShadow: `0 0 90px rgba(70,224,138,${glow})`,
           }}
         >
-          SESSION GUARD
+          WICKSIGHT
         </div>
       </div>
 

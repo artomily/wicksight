@@ -1,13 +1,13 @@
 {
-  "name": "session-guard-video",
+  "name": "wicksight-video",
   "private": true,
   "version": "0.1.0",
-  "description": "Remotion demo video for Session Guard",
+  "description": "Remotion demo video for WickSight",
   "scripts": {
     "studio": "remotion studio src/index.ts",
-    "render": "remotion render src/index.ts SessionGuard out/session-guard.mp4",
-    "render:draft": "remotion render src/index.ts SessionGuard out/session-guard-draft.mp4 --crf 23",
-    "still": "remotion still src/index.ts SessionGuard"
+    "render": "remotion render src/index.ts WickSight out/wicksight.mp4",
+    "render:draft": "remotion render src/index.ts WickSight out/wicksight-draft.mp4 --crf 23",
+    "still": "remotion still src/index.ts WickSight"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.545",

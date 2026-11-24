@@ -234,7 +234,7 @@ export const Safety: React.FC = () => {
       <Node
         x={1140}
         y={436}
-        label="SESSION GUARD API"
+        label="WICKSIGHT API"
         sub="Position cache · order guards · token"
         active
         badge="KEYS"

@@ -1,6 +1,6 @@
 import { TextContainerProperty } from '@evenrealities/even_hub_sdk'
-import type { PositionView } from '../shared/types'
-import { fmtPct, fmtPrice, fmtQty, fmtSigned, modeLabel } from './format'
+import type { LiqEtaView, PositionView } from '../shared/types'
+import { fmtPct, fmtPrice, fmtQty, fmtSigned, formatEta, modeLabel } from './format'
 import type { OrderPreviewView } from '../shared/types'
 
 export const W = 576
@@ -56,6 +56,7 @@ interface PositionTexts {
   status: string
   main: string
   hint: string
+  hintBrightness?: number
 }
 
 function clock(ts: number): string {
@@ -68,6 +69,7 @@ export function positionTexts(
   offline = false,
   pausedUntil?: number | null,
   stale = false,
+  eta: LiqEtaView | null = null,
 ): PositionTexts {
   if (!position) {
     if (pausedUntil) {
@@ -79,7 +81,7 @@ export function positionTexts(
     }
     return {
       status: offline ? '● OFFLINE' : '● CONNECTING',
-      main: offline ? "Can't reach server\n\nStart the API\n\nTap to retry" : 'Session Guard\n\nConnecting',
+      main: offline ? "Can't reach server\n\nStart the API\n\nTap to retry" : 'WickSight\n\nConnecting',
       hint: offline ? 'npm run dev' : '',
     }
   }
@@ -109,6 +111,9 @@ export function positionTexts(
     ? `Liq ${fmtPrice(position.liqPrice, position.priceDecimals)}`
     : 'Liq n/a'
   const away = position.distanceToLiqPct !== null ? ` · ${position.distanceToLiqPct.toFixed(1)}% away` : ''
+  const etaLine = eta
+    ? `LIQ IN ${formatEta(eta.minutes)} at this pace · buffer ${eta.bufferPct.toFixed(1)}%`
+    : null
 
   return {
     status,
@@ -117,7 +122,8 @@ export function positionTexts(
       `PnL ${pnl} · ROE ${roe}`,
       `${liq}${away}`,
     ].join('\n\n'),
-    hint: 'Hold: speak · 2x exit',
+    hint: etaLine ?? 'Hold: speak · 2x exit',
+    hintBrightness: eta && eta.minutes <= 5 ? 4 : 2,
   }
 }
 
@@ -127,14 +133,15 @@ export function positionPage(
   offline = false,
   pausedUntil?: number | null,
   stale = false,
+  eta: LiqEtaView | null = null,
 ): PageSpec {
-  const t = positionTexts(position, alertPrice, offline, pausedUntil, stale)
+  const t = positionTexts(position, alertPrice, offline, pausedUntil, stale, eta)
   return {
     texts: [
       captureLayer(true),
       text(2, 'status', 4, t.status, { brightness: 2 }),
       text(3, 'main', 64, t.main, { h: 176 }),
-      text(4, 'hint', HINT_Y, t.hint, { brightness: 2, h: 32 }),
+      text(4, 'hint', HINT_Y, t.hint, { brightness: t.hintBrightness ?? 2, h: 32 }),
     ],
   }
 }
@@ -144,7 +151,7 @@ export function bootPage(): PageSpec {
     texts: [
       captureLayer(true),
       text(2, 'status', 4, '● CONNECTING', { brightness: 2 }),
-      text(3, 'main', 64, 'Session Guard\n\nConnecting to testnet', { h: 176 }),
+      text(3, 'main', 64, 'WickSight\n\nConnecting to testnet', { h: 176 }),
       text(4, 'hint', HINT_Y, 'One position. One screen.', { brightness: 2 }),
     ],
   }

@@ -4,22 +4,22 @@ Copy/paste source for the Even Realities hackathon form. Links marked `TBD`.
 
 ## Basics
 
-- **Project name:** Session Guard
+- **Project name:** WickSight
 - **Tagline:** Your position, one glance. Your order, two gestures.
 - **Track:** 03 — Exchanges & Stocks
-- **Repo:** TBD (public GitHub, owner creates)
-- **Demo video:** TBD (≤ 3:00, simulator)
+- **Repo:** `github.com/artomily/wicksight` (owner publishes before submission)
+- **Demo video:** `wicksight-final.mp4` — 2:55, 1080p, silent, fully Remotion; the proof section is a labelled replay of the 23 Nov testnet HUD
 - **Team:** solo
 
 ## Short description (card)
 
-Session Guard puts one open futures position on Even G2 and keeps it there: position, live PnL, distance to liquidation. Hold the temple, say "alert 62,000" or "close half", and confirm with an explicit No/Yes screen. Orders go to Binance Futures **testnet** from a server-side key; the glasses never see a secret. One screen you can read in a glance, two gestures to act.
+WickSight puts one open futures position on Even G2 and keeps it there: position, live PnL, distance to liquidation, and — when the tape is trending toward the line — `LIQ IN ~4m at this pace`. Hold the temple, say "alert 62,000" or "close half", and confirm with an explicit No/Yes screen. The fill comes back with an after-action receipt: `Liq 58,684 → 55,591 · buffer 4.6% → 9.6%`. Orders go to Binance Futures **testnet** from a server-side key; the glasses never see a secret. One screen you can read in a glance, two gestures to act.
 
 ## Full description
 
 **The problem.** In a trading session the number that matters is not the chart, it is how far price is from liquidation. Checking that means picking up the phone, unlocking it, opening the exchange, and losing the screen you were watching. Even G2 is already on your face, but until now it had no way to show a position or take a fast, safe action.
 
-**What it does.** Session Guard shows three lines on the 576×288 monochrome canvas: the position (`BTCUSDT LONG 0.010 · 20x`), the PnL in USDT with ROE, and the liquidation price with the distance in percent. It updates every two seconds in place, without flicker. Hold the temple to talk: "alert 62,000" arms a price alert, "close half" opens a confirm screen. The confirm screen defaults to **No**; the user swipes to **Yes** and taps. The order executes on Binance Futures testnet and the fill is shown.
+**What it does.** WickSight shows three lines on the 576×288 monochrome canvas: the position (`BTCUSDT LONG 0.010 · 20x`), the PnL in USDT with ROE, and the liquidation price with the distance in percent. A fourth line turns the distance into time when the last three minutes of mark ticks are trending toward the line: `LIQ IN ~4m at this pace · buffer 4.6%`; it hides when price is moving away, flat or too noisy. It updates every two seconds in place, without flicker. Hold the temple to talk: "alert 62,000" arms a price alert, "close half" opens a confirm screen. The confirm screen defaults to **No**; the user swipes to **Yes** and taps. The order executes on Binance Futures testnet and the fill is shown with an after-action receipt: `Liq 58,684 → 55,591 · buffer 4.6% → 9.6% · sold 0.005 @ 61,502.9`.
 
 **How Even Hub is used.** The app is a Vite + TypeScript WebView app using `@evenrealities/even_hub_sdk` 0.0.16: text containers for the HUD, `textContainerUpgrade` for live values, `rebuildPageContainer` for screens, `audioControl` + `audioEvent` for 16 kHz PCM push-to-talk, and long-press events for the gesture. The network permission whitelist points at the owner's API origin, and `app.json` declares the glasses microphone.
 
@@ -29,7 +29,7 @@ Session Guard puts one open futures position on Even G2 and keeps it there: posi
 
 **Why it can launch.** Even Hub has messaging, news, AI and navigation apps but no trading app, and Track 03's own example is this workflow. The path is: catalogue listing with testnet + read-only mainnet (keys with trade permission disabled), then order writing only after an exchange review. The repo runs with no keys at all using a clearly labelled mock position, so anyone can try the interaction in the simulator in two commands.
 
-**Limits, stated honestly.** G2 shows one app at a time, so an alert only fires while Session Guard is open; the confirm screen says so. This is not financial advice and never holds funds.
+**Limits, stated honestly.** G2 shows one app at a time, so an alert only fires while WickSight is open; the confirm screen says so. The ETA is a short-window linear pace, not a liquidation forecast; it hides when the tape is noisy or moving away. This is not financial advice and never holds funds. The demo video is not live footage: it replays the recorded 23 Nov testnet HUD and says so on screen.
 
 ## Built with
 
@@ -38,7 +38,7 @@ Even Hub SDK 0.0.16, Vite, TypeScript, Fastify, transformers.js (Whisper small.e
 ## Submission checklist
 
 - [ ] Public repo + README (private until submission, owner creates)
-- [ ] Demo video ≤ 3:00, recorded in the simulator
+- [ ] Demo video ≤ 3:00, fully Remotion with the labelled HUD replay
 - [ ] Description pasted (above)
 - [ ] Feature requests pasted (docs/feature-requests.md)
 - [ ] Optional `.ehpk`: `npm run pack`

@@ -32,7 +32,7 @@ export const config = {
   apiToken: str('API_TOKEN', 'dev-local-token'),
   corsOrigins: str(
     'CORS_ORIGINS',
-    'http://localhost:5173,http://127.0.0.1:5173,https://session-guard.fly.dev',
+    'http://localhost:5173,http://127.0.0.1:5173,https://wicksight.fly.dev',
   )
     .split(',')
     .map((origin) => origin.trim())
@@ -74,7 +74,7 @@ export function assertNonProductionHost(url: string, allowedHosts: string[]) {
   }
   if (!allowedHosts.includes(hostname)) {
     throw new Error(
-      `Refusing to use "${url}". Session Guard only talks to testnet/demo endpoints (allowed hosts: ${allowedHosts.join(', ')}).`,
+      `Refusing to use "${url}". WickSight only talks to testnet/demo endpoints (allowed hosts: ${allowedHosts.join(', ')}).`,
     )
   }
 }

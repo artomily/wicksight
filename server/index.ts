@@ -4,12 +4,17 @@ import { AlertStore, PreviewStore } from './store.ts'
 import { createFeed } from './feed.ts'
 import { buildApp } from './app.ts'
 import { warmAsr } from './asr.ts'
+import { MarkHistory } from './eta.ts'
 
 const adapter = createAdapter()
 const alerts = new AlertStore()
 const previews = new PreviewStore()
+const marks = new MarkHistory()
 const feed = createFeed(adapter, config.symbol, {
-  onMark: (mark) => alerts.check(mark),
+  onMark: (mark) => {
+    marks.push(mark)
+    alerts.check(mark)
+  },
 })
 
 const app = buildApp({
@@ -17,6 +22,7 @@ const app = buildApp({
   feed,
   alerts,
   previews,
+  marks,
   symbol: config.symbol,
   apiToken: config.apiToken,
   corsOrigins: config.corsOrigins,
@@ -44,7 +50,7 @@ const keyState =
       : 'paper data, no keys'
 
 console.log('')
-console.log('  Session Guard API')
+console.log('  WickSight API')
 console.log(`  mode      ${adapter.mode}  (${keyState})`)
 console.log(`  symbol    ${config.symbol}`)
 console.log(`  asr       ${config.asrProvider}`)

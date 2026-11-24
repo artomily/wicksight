@@ -1,5 +1,5 @@
 import { interpolate, spring, useCurrentFrame } from 'remotion'
-import { CLAMP, easeNumber } from '../anim'
+import { CLAMP } from '../anim'
 import { C, F } from '../theme'
 import { FPS } from '../timeline'
 
@@ -49,9 +49,13 @@ const Line: React.FC<{
 export const Hook: React.FC = () => {
   const frame = useCurrentFrame()
 
-  const distance = easeNumber(frame, 4.6, 1.2, 70, 250)
-  const jitter = Math.sin(frame / 3.2) * 0.04
-  const shown = Math.max(0, distance + jitter)
+  const gauge = interpolate(frame, [24, 92], [0, 1], {
+    ...CLAMP,
+    easing: (t) => 1 - Math.pow(1 - t, 3),
+  })
+  const labelsIn = interpolate(frame, [90, 112], [0, 1], CLAMP)
+  const jitter = Math.sin(frame / 3.2) * 0.035
+  const shown = Math.max(0, 4.6 * gauge + jitter * gauge)
   const barHeight = (shown / 4.6) * 400
 
   const flash = interpolate(frame, [340, 352, 400], [0, 1, 0], CLAMP)
@@ -87,7 +91,7 @@ export const Hook: React.FC = () => {
             opacity: 0.55 + 0.45 * Math.abs(Math.sin(frame / 12)),
           }}
         />
-        LIVE SESSION · BTCUSDT
+        TESTNET SESSION · BTCUSDT
       </div>
 
       <div style={{ position: 'absolute', left: 120, top: 196 }}>
@@ -172,9 +176,10 @@ export const Hook: React.FC = () => {
               fontSize: 12,
               color: C.faint,
               whiteSpace: 'nowrap',
+              opacity: labelsIn,
             }}
           >
-            ENTRY 61,500
+            ENTRY 61,492.9
           </div>
           <div
             style={{
@@ -185,9 +190,10 @@ export const Hook: React.FC = () => {
               fontSize: 12,
               color: C.redDim,
               whiteSpace: 'nowrap',
+              opacity: labelsIn,
             }}
           >
-            LIQ 58,684
+            LIQ 58,684.4
           </div>
         </div>
       </div>

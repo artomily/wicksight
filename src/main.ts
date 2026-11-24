@@ -122,7 +122,7 @@ function specFor(next: Screen): ui.PageSpec {
     case 'boot':
       return ui.bootPage()
     case 'position':
-      return ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil, stale)
+      return ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil, stale, lastState?.eta ?? null)
     case 'listening':
       return ui.listeningPage()
     case 'thinking':
@@ -144,7 +144,7 @@ async function show(next: Screen): Promise<void> {
   screen = next
   await enqueue(async () => {
     if (next.kind === 'position' && previous.kind === 'position' && created) {
-      const spec = ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil, stale)
+      const spec = ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil, stale, lastState?.eta ?? null)
       for (const container of spec.texts) await upgradeText(container)
       return
     }
@@ -162,7 +162,7 @@ async function patchPosition(): Promise<void> {
       return
     }
     if (screen.kind !== 'position') return
-    const spec = ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil, stale)
+    const spec = ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil, stale, lastState?.eta ?? null)
     for (const container of spec.texts) await upgradeText(container)
   })
 }
@@ -355,9 +355,14 @@ async function executeOrder(preview: OrderPreviewView): Promise<void> {
       result.position.qty > 0
         ? `Left ${fmtQty(result.position.qty, result.position.qtyDecimals)}`
         : 'Position closed'
+    const sold = `${action} ${fmtQty(result.fill.executedQty, result.fill.qtyDecimals)} ${result.fill.symbol} @ ${fmtPrice(result.fill.avgPrice, result.position.priceDecimals)}`
+    const receipt = result.receipt
+    const receiptLine = receipt
+      ? `Liq ${optionalPrice(receipt.liqBefore)} → ${optionalPrice(receipt.liqAfter)} · buffer ${optionalPct(receipt.bufferBeforePct)} → ${optionalPct(receipt.bufferAfterPct)}`
+      : null
     showResult(
       '● FILLED',
-      `Closed half\n\n${action} ${fmtQty(result.fill.executedQty, result.fill.qtyDecimals)} ${result.fill.symbol}\n@ ${fmtPrice(result.fill.avgPrice, result.position.priceDecimals)}`,
+      receiptLine ? `Closed half\n\n${receiptLine}\n\n${sold}` : `Closed half\n\n${sold}`,
       left,
       5000,
     )
@@ -370,6 +375,14 @@ async function executeOrder(preview: OrderPreviewView): Promise<void> {
       7000,
     )
   }
+}
+
+function optionalPrice(value: number | null): string {
+  return value !== null && Number.isFinite(value) && value > 0 ? fmtPrice(value, 0) : '—'
+}
+
+function optionalPct(value: number | null): string {
+  return value !== null && Number.isFinite(value) ? `${value.toFixed(1)}%` : '—'
 }
 
 /* -------------------------------- input -------------------------------- */

@@ -1,90 +1,76 @@
-export type ProofKind = 'image' | 'video'
-
-export interface Highlight {
-  /** Coordinates in the original 576×288 capture. */
-  x: number
-  y: number
-  w: number
-  h: number
-  label: string
-}
-
 export interface ProofSlot {
-  id: 'hud' | 'voice' | 'alert' | 'confirm' | 'fill'
-  kind: ProofKind
-  /** File inside video/public. Use `clips/xx.mp4` for recordings. */
-  src: string
+  id: 'hud' | 'voice' | 'alert' | 'eta' | 'confirm' | 'fill' | 'receipt'
   step: string
   kicker: string
   title: string
   chips: string[]
   durationInFrames: number
-  highlight?: Highlight
-  waveform?: boolean
 }
 
 /**
- * Real proof slots. To swap in tonight's simulator recordings:
- *   1. drop the file into video/public/clips/
- *   2. set kind: 'video' and src: 'clips/<name>.mp4'
- * Keep durationInFrames as-is (the recording is trimmed/looped to fit).
+ * The seven proof beats. Each one is a labelled replay of the real 23 Nov 2026
+ * Binance testnet HUD, rebuilt in Remotion from the captures in `public/`.
+ * No live market data is shown; no recording is required.
  *
- * Exact durations:
- *   hud 18s · voice 20s · alert 17s · confirm 23s · fill 17s
+ * Exact durations (95 s total):
+ *   hud 14s · voice 16s · alert 12s · eta 13s · confirm 16s · fill 12s · receipt 12s
  */
 export const PROOF_SLOTS: ProofSlot[] = [
   {
     id: 'hud',
-    kind: 'image',
-    src: 'position.png',
-    step: '01 / 05',
-    kicker: 'READ · LIVE',
+    step: '01 / 07',
+    kicker: 'READ · REPLAY',
     title: 'One position,\nalways in view.',
-    chips: ['Position, PnL, liq', 'Live over WebSocket', 'Read in a glance'],
-    durationInFrames: 540,
-    highlight: { x: 22, y: 170, w: 310, h: 38, label: '4.6% AWAY' },
+    chips: ['Position, PnL, liq', 'WebSocket feed', 'Read in a glance'],
+    durationInFrames: 420,
   },
   {
     id: 'voice',
-    kind: 'image',
-    src: 'listening.png',
-    step: '02 / 05',
+    step: '02 / 07',
     kicker: 'VOICE · PUSH TO TALK',
     title: "Talk.\nDon't type.",
     chips: ['16 kHz from G2', 'Whisper small.en · local', 'No cloud audio'],
-    durationInFrames: 600,
-    waveform: true,
+    durationInFrames: 480,
   },
   {
     id: 'alert',
-    kind: 'image',
-    src: 'alert.png',
-    step: '03 / 05',
+    step: '03 / 07',
     kicker: 'ALERT · DISPLAY ONLY',
     title: 'The alert\nfinds you.',
     chips: ['Fires on mark price', 'While the app is open', 'One tap to dismiss'],
-    durationInFrames: 510,
+    durationInFrames: 360,
+  },
+  {
+    id: 'eta',
+    step: '04 / 07',
+    kicker: 'RISK · TIME TO LIQ',
+    title: 'Distance is\nnot time.',
+    chips: ['3-minute tick window', 'USDT/min toward liq', 'Hidden when noisy or away'],
+    durationInFrames: 390,
   },
   {
     id: 'confirm',
-    kind: 'image',
-    src: 'confirm.png',
-    step: '04 / 05',
+    step: '05 / 07',
     kicker: 'WRITE · EXPLICIT YES',
     title: 'Two gestures\nto act.',
     chips: ['Default is No', 'Swipe, then tap', 'Single-use preview'],
-    durationInFrames: 690,
-    highlight: { x: 24, y: 118, w: 528, h: 62, label: '' },
+    durationInFrames: 480,
   },
   {
     id: 'fill',
-    kind: 'image',
-    src: 'filled.png',
-    step: '05 / 05',
-    kicker: 'PROOF · BINANCE TESTNET',
+    step: '06 / 07',
+    kicker: 'FILL · BINANCE TESTNET',
     title: 'Filled on\ntestnet.',
     chips: ['Reduce-only market', 'Ban-aware REST', 'Keys never in app'],
-    durationInFrames: 510,
+    durationInFrames: 360,
+  },
+  {
+    id: 'receipt',
+    step: '07 / 07',
+    kicker: 'AFTER ACTION · RECEIPT',
+    title: 'Proof the\nrisk moved.',
+    chips: ['Liq before → after', 'Buffer 4.6% → 9.6%', 'Derived from recorded state'],
+    durationInFrames: 360,
   },
 ]
 
@@ -98,7 +84,7 @@ export type VideoProps = {
 }
 
 export const defaultProps: VideoProps = {
-  repo: 'github.com/your-handle/session-guard',
+  repo: 'github.com/artomily/wicksight',
   music: false,
   voiceover: false,
 }

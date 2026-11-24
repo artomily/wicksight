@@ -1,13 +1,13 @@
 import { Composition } from 'remotion'
-import { SessionGuard } from './SessionGuard'
+import { WickSight } from './WickSight'
 import { defaultProps } from './config'
 import { DURATION, FPS, HEIGHT, WIDTH } from './timeline'
 
 export const RemotionRoot = () => {
   return (
     <Composition
-      id="SessionGuard"
-      component={SessionGuard}
+      id="WickSight"
+      component={WickSight}
       durationInFrames={DURATION}
       fps={FPS}
       width={WIDTH}

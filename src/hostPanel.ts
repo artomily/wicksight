@@ -14,7 +14,7 @@ export function mountHostPanel(): void {
     <main class="host">
       <header class="host-head">
         <div>
-          <h1>Session Guard</h1>
+          <h1>WickSight</h1>
           <p class="sub">One position. One screen. Testnet only.</p>
         </div>
         <span class="badge">SIMULATOR</span>
