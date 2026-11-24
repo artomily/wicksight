@@ -1,4 +1,4 @@
-import { AbsoluteFill, Audio, Sequence, interpolate, spring, staticFile, useCurrentFrame } from 'remotion'
+import { AbsoluteFill, Audio, Img, Sequence, interpolate, spring, staticFile, useCurrentFrame } from 'remotion'
 import { Backdrop } from './components/Backdrop'
 import { CaptionTrack } from './components/CaptionTrack'
 import {
@@ -403,22 +403,6 @@ const Receipt: React.FC = () => {
   )
 }
 
-const WickMark: React.FC<{ size?: number }> = ({ size = 108 }) => (
-  <svg width={size} height={size} viewBox="0 0 1024 1024" fill="none">
-    <circle cx="512" cy="512" r="300" stroke={C.green} strokeWidth="44" />
-    <path
-      d="M 300 300 A 300 300 0 0 1 392 238"
-      stroke={C.greenBright}
-      strokeWidth="18"
-      strokeLinecap="round"
-      opacity="0.55"
-    />
-    <line x1="512" y1="300" x2="512" y2="430" stroke={C.greenBright} strokeWidth="22" strokeLinecap="round" />
-    <rect x="466" y="430" width="92" height="250" rx="46" fill={C.green} />
-    <line x1="512" y1="680" x2="512" y2="740" stroke={C.greenDim} strokeWidth="18" strokeLinecap="round" />
-  </svg>
-)
-
 const End: React.FC<{ repo: string }> = ({ repo }) => {
   const frame = useCurrentFrame()
   const word = spring({ frame, fps: FPS, config: { damping: 200, mass: 0.7 } })
@@ -449,7 +433,7 @@ const End: React.FC<{ repo: string }> = ({ repo }) => {
           transform: `translateY(${(1 - word) * 18}px)`,
         }}
       >
-        <WickMark size={112} />
+        <Img src={staticFile('voxel-lens.svg')} style={{ width: 170, height: 150, objectFit: 'contain' }} />
         <div
           style={{
             fontFamily: F.display,

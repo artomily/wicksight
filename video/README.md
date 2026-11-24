@@ -36,6 +36,8 @@ npx remotion render src/index.ts WickSight1Min \
   --props='{"music":true,"voiceover":true}'
 ```
 
+The 60 s end card uses the current voxel-lens mark (`public/voxel-lens.svg`), the same motif as the product page. The HUD frames remain the real 576×288 monochrome glasses UI.
+
 ## Full cut (2:59)
 
 ## Structure
