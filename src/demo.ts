@@ -1,5 +1,6 @@
 import './demo.css'
 import { parseIntent } from '../server/intents.ts'
+import { voxelLensSvg } from './voxel'
 
 const MARK = 61_486.88
 const ENTRY = 61_492.88
@@ -314,71 +315,192 @@ const handleCommand = (raw: string): void => {
 
 const shell = (): string => `
   <div class="page">
-    <header class="topbar">
-      <div class="brand"><img src="/favicon.svg" alt="" /><span>WICKSIGHT</span></div>
-      <span class="badge">DEMO · REPLAY</span>
+    <header class="nav">
+      <a class="brand" href="#"><img src="/favicon.svg" alt="" /><span>WICKSIGHT</span></a>
+      <nav class="nav-links">
+        <a href="#try">Try it</a>
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#safety">Safety</a>
+      </nav>
+      <div class="nav-actions">
+        <a class="nav-cta" href="#try">Try the demo <span>→</span></a>
+        <a class="nav-ghost" href="https://github.com/artomily/wicksight" target="_blank" rel="noreferrer">GitHub ↗</a>
+      </div>
     </header>
 
     <section class="hero">
-      <div class="kicker">Even G2 · Track 03</div>
-      <h1>One position. One screen.<br />Act in seconds.</h1>
-      <p class="lede">
-        This is the <strong>WickSight HUD running in your browser</strong> on the recorded
-        23 Nov 2026 Binance Futures <strong>testnet</strong> state. No keys, no exchange calls,
-        no orders. Buttons and typed commands stand in for voice.
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="eyebrow-dot"></span>EVEN G2 · TRACK 03</span>
+        <h1>See the liquidation coming.<br /><span class="lime">Get out of it.</span></h1>
+        <p class="lede">
+          WickSight reads the time to liquidation, then gets you out: a voiced close-half,
+          a default-No confirmation, and a receipt that proves the buffer moved. From your
+          glasses, on Binance Futures <strong>testnet</strong>.
+        </p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#try">Try the live demo <span>→</span></a>
+          <a class="btn" href="https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-final.mp4" target="_blank" rel="noreferrer">Watch the 60s demo <span>↗</span></a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><span class="stat-value">4.6%</span><span class="stat-label">buffer at entry</span></div>
+          <div class="stat"><span class="stat-value">~4m</span><span class="stat-label">time to liq</span></div>
+          <div class="stat"><span class="stat-value">2</span><span class="stat-label">gestures to act</span></div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="voxel-panel">
+          <div class="panel-top"><span class="pill">VOXEL · LENS</span><span>01 / 04</span></div>
+          <div class="voxel-art">${voxelLensSvg(560)}</div>
+          <div class="panel-foot"><span>ONE POSITION</span><span>ONE SCREEN</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ticker">
+      <div class="ticker-cell"><span class="ticker-k">READ</span><span class="ticker-v">Position · PnL · Liq distance · ETA</span></div>
+      <div class="ticker-cell"><span class="ticker-k">ACT</span><span class="ticker-v">Voice → No/Yes → testnet fill</span></div>
+      <div class="ticker-cell"><span class="ticker-k">PROVE</span><span class="ticker-v">Receipt: buffer 4.6% → 9.6%</span></div>
+    </section>
+
+    <section class="section" id="try">
+      <div class="section-head">
+        <span class="eyebrow">LIVE DEMO · REPLAY</span>
+        <h2>Try the HUD.</h2>
+        <p>
+          The recorded 23 Nov 2026 testnet state, running entirely in your browser.
+          No keys, no exchange calls, no orders. Buttons and typed commands stand in for voice.
+        </p>
+        <div class="bar"></div>
+      </div>
+
+      <div class="screen-card">
+        <div class="screen-head">
+          <span>EVEN G2 · HUD · 576 × 288</span>
+          <span class="replay">● DEMO · REPLAY</span>
+        </div>
+        <div class="hud-wrap" id="hud-wrap">
+          <div class="hud-canvas" id="hud"></div>
+        </div>
+        <div class="screen-foot">
+          <span>RECORDED 23 NOV 2026 · BINANCE FUTURES TESTNET</span>
+          <span>NO LIVE DATA · NO KEYS · NO ORDERS</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="controls-head">
+          <h2>Try it</h2>
+          <div class="feedback" id="feedback"></div>
+        </div>
+        <div class="buttons" id="buttons"></div>
+        <div class="command">
+          <input
+            id="command"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Type: alert 61,500 · close half · reset"
+            aria-label="Type a command"
+          />
+          <button class="btn primary" id="run">Run</button>
+        </div>
+        <p class="hint">
+          Voice is simulated here. <code>alert 61,500</code> arms an alert,
+          <code>close half</code> opens the confirm screen, <code>reset</code> starts over.
+          The real app uses 16 kHz push-to-talk and local Whisper.
+        </p>
+      </div>
+
+      <p class="demo-note">
+        The recorded position is 0.01 BTCUSDT long at 20×, entry ≈ 61,492.9, liq 58,684.4,
+        buffer 4.6%. Closing half fills 0.005 @ 61,502.9 and the receipt shows liq
+        58,684 → 55,591, buffer 4.6% → 9.6%. The after-liq is derived from the recorded
+        pre-close position and the exchange's isolated-margin formula; the live app reads both
+        values from Binance. <a href="https://github.com/artomily/wicksight" target="_blank" rel="noreferrer">Source on GitHub</a>
+        · <a href="https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-final.mp4" target="_blank" rel="noreferrer">Watch the 60s demo</a>.
       </p>
     </section>
 
-    <section class="screen-card">
-      <div class="screen-head">
-        <span>EVEN G2 · 576 × 288</span>
-        <span class="replay">● DEMO · REPLAY</span>
+    <section class="section" id="features">
+      <div class="section-head">
+        <span class="eyebrow">WHAT IT DOES</span>
+        <h2>Four things. One loop.</h2>
+        <p>Read the risk, act on it, and prove the action changed it. That is the whole product.</p>
+        <div class="bar"></div>
       </div>
-      <div class="hud-wrap" id="hud-wrap">
-        <div class="hud-canvas" id="hud"></div>
-      </div>
-      <div class="screen-foot">
-        <span>RECORDED 23 NOV 2026 · BINANCE FUTURES TESTNET</span>
-        <span>NO LIVE DATA · NO KEYS · NO ORDERS</span>
+      <div class="feature-grid">
+        <article class="feature">
+          <div class="feature-top"><span>01</span><span class="mono">ETA</span></div>
+          <div class="feature-bar"></div>
+          <h3>Liquidation ETA</h3>
+          <p>Not just how far. How long — fitted from the last three minutes of 1 s mark ticks.</p>
+          <div class="feature-code">LIQ IN ~4m at this pace
+buffer 4.6%</div>
+        </article>
+        <article class="feature">
+          <div class="feature-top"><span>02</span><span class="mono">VOICE</span></div>
+          <div class="feature-bar"></div>
+          <h3>Voice</h3>
+          <p>Hold the temple. Speak. 16 kHz PCM in, Whisper small.en locally, a deterministic parser.</p>
+          <div class="feature-code">"alert 61,500"
+"close half"</div>
+        </article>
+        <article class="feature">
+          <div class="feature-top"><span>03</span><span class="mono">WRITE</span></div>
+          <div class="feature-bar"></div>
+          <h3>Confirmed close-half</h3>
+          <p>Voice only creates a preview. Default No; swipe to Yes; tap. Reduce-only, quantity-bound, single use.</p>
+          <div class="feature-code">No, keep 0.010
+Yes, sell 0.005</div>
+        </article>
+        <article class="feature">
+          <div class="feature-top"><span>04</span><span class="mono">PROOF</span></div>
+          <div class="feature-bar"></div>
+          <h3>After-action receipt</h3>
+          <p>The execute response carries the before/after liquidation line and buffer from the exchange snapshots.</p>
+          <div class="feature-code">Liq 58,684 → 55,591
+buffer 4.6% → 9.6%</div>
+        </article>
       </div>
     </section>
 
-    <section class="controls">
-      <div class="controls-head">
-        <h2>Try the HUD</h2>
-        <div class="feedback" id="feedback"></div>
+    <section class="section" id="how">
+      <div class="section-head">
+        <span class="eyebrow">HOW IT WORKS</span>
+        <h2>Glance. Confirm. Prove.</h2>
+        <div class="bar"></div>
       </div>
-      <div class="buttons" id="buttons"></div>
-      <div class="command">
-        <input
-          id="command"
-          type="text"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="Type: alert 61,500 · close half · reset"
-          aria-label="Type a command"
-        />
-        <button class="btn" id="run">Run</button>
+      <div class="how-grid">
+        <div class="how-step"><span class="step-num">01</span><h3>Glance</h3><p>Position, PnL, distance to liquidation, and the ETA — one 576×288 monochrome screen, updated in place.</p></div>
+        <div class="how-step"><span class="step-num">02</span><h3>Confirm</h3><p>Hold the temple and speak. A preview appears. Default No; swipe to Yes; tap. The order path fails closed.</p></div>
+        <div class="how-step"><span class="step-num">03</span><h3>Prove</h3><p>A reduce-only testnet fill returns the after-action receipt. The buffer moved, and the receipt shows it.</p></div>
       </div>
-      <p class="hint">
-        Voice is simulated here. <code>alert 61,500</code> arms an alert,
-        <code>close half</code> opens the confirm screen, <code>reset</code> starts over.
-        The real app uses 16 kHz push-to-talk and local Whisper.
-      </p>
     </section>
 
-    <p class="note">
-      The recorded position is 0.01 BTCUSDT long at 20×, entry ≈ 61,492.9, liq 58,684.4,
-      buffer 4.6%. Closing half fills 0.005 @ 61,502.9 and the receipt shows liq
-      58,684 → 55,591, buffer 4.6% → 9.6%. The after-liq is derived from the recorded
-      pre-close position and the exchange's isolated-margin formula; the live app reads both
-      values from Binance. <a href="https://github.com/artomily/wicksight" target="_blank" rel="noreferrer">Source on GitHub</a>
-      · <a href="https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-final.mp4" target="_blank" rel="noreferrer">Watch the 60s demo</a>.
-    </p>
+    <section class="section safety" id="safety">
+      <div class="section-head">
+        <span class="eyebrow">SAFETY MODEL</span>
+        <h2>Testnet only. Explicit yes.</h2>
+        <div class="bar"></div>
+      </div>
+      <div class="safety-grid">
+        <div class="safety-card"><span class="safety-k">HOST GATE</span><h3>Exact hostname.</h3><p>The Binance adapter refuses any host that is not <span class="mono">testnet.binancefuture.com</span> at boot. Lookalikes are rejected.</p></div>
+        <div class="safety-card"><span class="safety-k">KEYS</span><h3>Server-side only.</h3><p>Testnet keys live in the server's <span class="mono">.env</span>; never in the WebView, never in logs, never in git.</p></div>
+        <div class="safety-card"><span class="safety-k">CONFIRM</span><h3>Default No.</h3><p>Two gestures, a single-use preview bound to the quantity, 45 s TTL. A replay gets a clean 409.</p></div>
+        <div class="safety-card"><span class="safety-k">AUTOMATION</span><h3>None.</h3><p>Alerts are display-only. Nothing fires an order without a human. No custody; no mainnet order path.</p></div>
+      </div>
+    </section>
 
     <footer class="footer">
-      <span>WickSight · Track 03 — Exchanges &amp; Stocks</span>
-      <span>DEMO · REPLAY · NOT FINANCIAL ADVICE</span>
+      <div class="footer-brand"><img src="/favicon.svg" alt="" /><span>WICKSIGHT</span></div>
+      <div class="footer-links">
+        <a href="https://github.com/artomily/wicksight" target="_blank" rel="noreferrer">GitHub ↗</a>
+        <a href="https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-final.mp4" target="_blank" rel="noreferrer">60s demo ↗</a>
+        <a href="https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-full.mp4" target="_blank" rel="noreferrer">Full cut ↗</a>
+        <a href="https://wicksight.vercel.app" target="_blank" rel="noreferrer">Live demo ↗</a>
+      </div>
+      <div class="footer-fine">DEMO · REPLAY<br />NOT FINANCIAL ADVICE</div>
     </footer>
   </div>
 `

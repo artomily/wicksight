@@ -13,6 +13,7 @@ import { VoiceRecorder } from './audio'
 import { compact, ellipsis, fmtPrice, fmtQty } from './format'
 import * as ui from './ui'
 import { mountHostPanel } from './hostPanel'
+import './style.css'
 
 mountHostPanel()
 

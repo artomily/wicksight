@@ -1,5 +1,6 @@
 import { API_BASE, api } from './api'
 import { fmtPrice, fmtQty, fmtSigned, modeLabel } from './format'
+import { voxelLensSvg } from './voxel'
 
 /**
  * Phone-side host page. The glasses UI is drawn by the Even Hub bridge, not by
@@ -13,28 +14,38 @@ export function mountHostPanel(): void {
   root.innerHTML = `
     <main class="host">
       <header class="host-head">
-        <div>
-          <h1>WickSight</h1>
-          <p class="sub">One position. One screen. Testnet only.</p>
-        </div>
-        <span class="badge">SIMULATOR</span>
+        <div class="host-brand"><img src="/favicon.svg" alt="" /><span>WICKSIGHT</span></div>
+        <span class="eyebrow"><span class="eyebrow-dot"></span>HOST PANEL · SIMULATOR</span>
       </header>
 
-      <section class="card">
-        <div class="row"><span class="label">API</span><span class="value" id="h-api">connecting…</span></div>
-        <div class="row"><span class="label">Mode</span><span class="value" id="h-mode">—</span></div>
-        <div class="row"><span class="label">Position</span><span class="value" id="h-pos">—</span></div>
-        <div class="row"><span class="label">Alert</span><span class="value" id="h-alert">none</span></div>
+      <section class="host-hero">
+        <div class="host-copy">
+          <span class="eyebrow">BENCH · TESTNET</span>
+          <h1>One position.<br />One screen.</h1>
+          <p class="sub">
+            The glasses draw the HUD. This panel is the bench: connection state and the
+            same intent parser, without speaking.
+          </p>
+        </div>
+        <div class="host-voxel">${voxelLensSvg(220)}</div>
       </section>
 
-      <section class="card">
-        <label class="label" for="h-cmd">Test the voice parser</label>
+      <section class="host-grid">
+        <div class="host-cell"><span class="host-k">API</span><span class="host-v" id="h-api">connecting…</span></div>
+        <div class="host-cell"><span class="host-k">MODE</span><span class="host-v" id="h-mode">—</span></div>
+        <div class="host-cell"><span class="host-k">POSITION</span><span class="host-v" id="h-pos">—</span></div>
+        <div class="host-cell"><span class="host-k">ALERT</span><span class="host-v" id="h-alert">none</span></div>
+      </section>
+
+      <section class="host-card">
+        <span class="eyebrow">PARSER</span>
+        <h2>Test a command.</h2>
+        <p class="fine">Same parser as the glasses. No audio needed.</p>
         <div class="input-row">
-          <input id="h-cmd" autocomplete="off" placeholder="alert 62,000" />
+          <input id="h-cmd" autocomplete="off" placeholder="alert 61,500" />
           <button id="h-send" type="button">Parse</button>
         </div>
-        <pre id="h-out" class="out">Try “alert 62,000” or “close half”.</pre>
-        <p class="fine">Debug path only. On the glasses, hold the temple and speak.</p>
+        <pre id="h-out" class="out">Try “alert 61,500” or “close half”.</pre>
       </section>
 
       <footer class="host-foot">
