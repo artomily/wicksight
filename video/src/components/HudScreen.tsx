@@ -279,6 +279,51 @@ export const HudFilled: React.FC<{
   </div>
 )
 
+export interface HudMultiProps {
+  header: string
+  symbol: string
+  qty: string
+  side: string
+  leverage: string
+  pnl: string
+  roe: string
+  liq: string
+  distance: string
+  hint: string
+  cycle: string
+}
+
+/** Multi-position HUD: header names the count + riskiest, body is the selected position. */
+export const HudMulti: React.FC<HudMultiProps> = ({
+  header,
+  symbol,
+  qty,
+  side,
+  leverage,
+  pnl,
+  roe,
+  liq,
+  distance,
+  hint,
+  cycle,
+}) => (
+  <div style={{ position: 'absolute', inset: 0, background: '#000' }}>
+    <Status text={header} pulse={0.85} />
+    <Line top={64}>
+      {symbol} {side} {qty} · {leverage}x
+    </Line>
+    <Line top={118}>
+      PnL {pnl} USDT · ROE {roe}
+    </Line>
+    <Line top={172}>
+      Liq {liq} · {distance}% away
+    </Line>
+    <Line top={242} color={DIM} size={22}>
+      {hint} · {cycle}
+    </Line>
+  </div>
+)
+
 export interface HudSnapshot {
   mark: number
   entry: number
