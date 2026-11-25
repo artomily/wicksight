@@ -1,0 +1,73 @@
+{
+ "id": "v4-2",
+ "window": "8-14 Telegram",
+ "text": "Your phone is in your pocket. WickSight still finds you, right in Telegram.",
+ "seconds": 6.48,
+ "words": [
+  {
+   "word": "Your",
+   "start": 0.0,
+   "end": 0.08
+  },
+  {
+   "word": "phone",
+   "start": 0.16,
+   "end": 0.56
+  },
+  {
+   "word": "is",
+   "start": 0.747,
+   "end": 1.12
+  },
+  {
+   "word": "in",
+   "start": 1.147,
+   "end": 1.2
+  },
+  {
+   "word": "your",
+   "start": 1.232,
+   "end": 1.36
+  },
+  {
+   "word": "pocket.",
+   "start": 1.429,
+   "end": 2.0
+  },
+  {
+   "word": "WickSight",
+   "start": 2.224,
+   "end": 3.36
+  },
+  {
+   "word": "still",
+   "start": 3.4,
+   "end": 3.6
+  },
+  {
+   "word": "finds",
+   "start": 3.667,
+   "end": 4.0
+  },
+  {
+   "word": "you,",
+   "start": 4.06,
+   "end": 4.68
+  },
+  {
+   "word": "right",
+   "start": 4.753,
+   "end": 5.12
+  },
+  {
+   "word": "in",
+   "start": 5.147,
+   "end": 5.2
+  },
+  {
+   "word": "Telegram.",
+   "start": 5.28,
+   "end": 6.48
+  }
+ ]
+}

@@ -1,0 +1,43 @@
+{
+ "id": "v4-4",
+ "window": "21-25 multi",
+ "text": "Three trades open? The riskiest comes first.",
+ "seconds": 3.28,
+ "words": [
+  {
+   "word": "Three",
+   "start": 0.0,
+   "end": 0.16
+  },
+  {
+   "word": "trades",
+   "start": 0.217,
+   "end": 0.56
+  },
+  {
+   "word": "open?",
+   "start": 0.64,
+   "end": 1.04
+  },
+  {
+   "word": "The",
+   "start": 1.24,
+   "end": 1.84
+  },
+  {
+   "word": "riskiest",
+   "start": 1.904,
+   "end": 2.4
+  },
+  {
+   "word": "comes",
+   "start": 2.453,
+   "end": 2.72
+  },
+  {
+   "word": "first.",
+   "start": 2.8,
+   "end": 3.28
+  }
+ ]
+}

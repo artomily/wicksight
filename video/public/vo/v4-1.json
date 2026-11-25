@@ -1,0 +1,93 @@
+{
+ "id": "v4-1",
+ "window": "0-8 concept",
+ "text": "It's five-forty on the commute. Bitcoin is sliding, and your twenty-x long is four minutes from liquidation.",
+ "seconds": 8.0,
+ "words": [
+  {
+   "word": "It's",
+   "start": 0.0,
+   "end": 0.16
+  },
+  {
+   "word": "five-forty",
+   "start": 0.208,
+   "end": 0.72
+  },
+  {
+   "word": "on",
+   "start": 0.747,
+   "end": 0.8
+  },
+  {
+   "word": "the",
+   "start": 0.82,
+   "end": 0.88
+  },
+  {
+   "word": "commute.",
+   "start": 0.94,
+   "end": 2.04
+  },
+  {
+   "word": "Bitcoin",
+   "start": 2.125,
+   "end": 2.72
+  },
+  {
+   "word": "is",
+   "start": 2.773,
+   "end": 2.88
+  },
+  {
+   "word": "sliding,",
+   "start": 2.96,
+   "end": 4.0
+  },
+  {
+   "word": "and",
+   "start": 4.04,
+   "end": 4.16
+  },
+  {
+   "word": "your",
+   "start": 4.192,
+   "end": 4.32
+  },
+  {
+   "word": "twenty-x",
+   "start": 4.366,
+   "end": 4.88
+  },
+  {
+   "word": "long",
+   "start": 4.992,
+   "end": 5.44
+  },
+  {
+   "word": "is",
+   "start": 5.6,
+   "end": 5.92
+  },
+  {
+   "word": "four",
+   "start": 5.984,
+   "end": 6.24
+  },
+  {
+   "word": "minutes",
+   "start": 6.3,
+   "end": 6.72
+  },
+  {
+   "word": "from",
+   "start": 6.8,
+   "end": 7.12
+  },
+  {
+   "word": "liquidation.",
+   "start": 7.166,
+   "end": 8.0
+  }
+ ]
+}

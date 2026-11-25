@@ -1,0 +1,47 @@
+{
+  "voice": "Daniel (onwK4e9ZLuTAKqWW03F9)",
+  "model": "eleven_v3",
+  "target_wpm": 130,
+  "beats": [
+    {
+      "id": "v4-1",
+      "window": "0-8 concept",
+      "text": "It's five-forty on the commute. Bitcoin is sliding, and your twenty-x long is four minutes from liquidation."
+    },
+    {
+      "id": "v4-2",
+      "window": "8-14 Telegram",
+      "text": "Your phone is in your pocket. WickSight still finds you, right in Telegram."
+    },
+    {
+      "id": "v4-3",
+      "window": "14-21 glance + alert",
+      "text": "Glance up: size, P&L, liquidation. Say \"alert sixty-one five\", and it's set."
+    },
+    {
+      "id": "v4-4",
+      "window": "21-25 multi",
+      "text": "Three trades open? The riskiest comes first."
+    },
+    {
+      "id": "v4-5",
+      "window": "25-41 close half",
+      "text": "Say \"close half\". WickSight shows the exact order before anything moves. The default is No. Swipe to Yes, tap once, and a reduce-only order fills on Binance testnet."
+    },
+    {
+      "id": "v4-6",
+      "window": "41-48 receipt",
+      "text": "Then the proof: liquidation pushed back, your buffer more than doubled."
+    },
+    {
+      "id": "v4-7",
+      "window": "48-51 simulator",
+      "text": "Running today in the Even Hub simulator."
+    },
+    {
+      "id": "v4-8",
+      "window": "51-60 end",
+      "text": "Trade-only keys. Withdrawals refused. Nothing moves without your yes. WickSight: see it coming, get out in time."
+    }
+  ]
+}

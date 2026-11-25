@@ -1,0 +1,148 @@
+{
+ "id": "v4-5",
+ "window": "25-41 close half",
+ "text": "Say \"close half\". WickSight shows the exact order before anything moves. The default is No. Swipe to Yes, tap once, and a reduce-only order fills on Binance testnet.",
+ "seconds": 14.4,
+ "words": [
+  {
+   "word": "Say",
+   "start": 0.0,
+   "end": 0.24
+  },
+  {
+   "word": "\"close",
+   "start": 0.52,
+   "end": 1.04
+  },
+  {
+   "word": "half\".",
+   "start": 1.136,
+   "end": 1.6
+  },
+  {
+   "word": "WickSight",
+   "start": 1.824,
+   "end": 3.04
+  },
+  {
+   "word": "shows",
+   "start": 3.133,
+   "end": 3.6
+  },
+  {
+   "word": "the",
+   "start": 3.64,
+   "end": 3.76
+  },
+  {
+   "word": "exact",
+   "start": 3.84,
+   "end": 4.24
+  },
+  {
+   "word": "order",
+   "start": 4.293,
+   "end": 4.56
+  },
+  {
+   "word": "before",
+   "start": 4.651,
+   "end": 5.2
+  },
+  {
+   "word": "anything",
+   "start": 5.244,
+   "end": 5.6
+  },
+  {
+   "word": "moves.",
+   "start": 5.707,
+   "end": 6.48
+  },
+  {
+   "word": "The",
+   "start": 6.54,
+   "end": 6.72
+  },
+  {
+   "word": "default",
+   "start": 6.77,
+   "end": 7.12
+  },
+  {
+   "word": "is",
+   "start": 7.147,
+   "end": 7.2
+  },
+  {
+   "word": "No.",
+   "start": 7.36,
+   "end": 8.16
+  },
+  {
+   "word": "Swipe",
+   "start": 8.24,
+   "end": 8.64
+  },
+  {
+   "word": "to",
+   "start": 8.693,
+   "end": 8.8
+  },
+  {
+   "word": "Yes,",
+   "start": 8.9,
+   "end": 9.44
+  },
+  {
+   "word": "tap",
+   "start": 9.54,
+   "end": 9.84
+  },
+  {
+   "word": "once,",
+   "start": 9.92,
+   "end": 10.32
+  },
+  {
+   "word": "and",
+   "start": 10.44,
+   "end": 10.8
+  },
+  {
+   "word": "a",
+   "start": 10.84,
+   "end": 10.88
+  },
+  {
+   "word": "reduce-only",
+   "start": 10.937,
+   "end": 11.68
+  },
+  {
+   "word": "order",
+   "start": 11.733,
+   "end": 12.0
+  },
+  {
+   "word": "fills",
+   "start": 12.08,
+   "end": 12.48
+  },
+  {
+   "word": "on",
+   "start": 12.667,
+   "end": 13.04
+  },
+  {
+   "word": "Binance",
+   "start": 13.12,
+   "end": 13.68
+  },
+  {
+   "word": "testnet.",
+   "start": 13.76,
+   "end": 14.4
+  }
+ ]
+}

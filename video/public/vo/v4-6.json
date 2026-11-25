@@ -1,0 +1,63 @@
+{
+ "id": "v4-6",
+ "window": "41-48 receipt",
+ "text": "Then the proof: liquidation pushed back, your buffer more than doubled.",
+ "seconds": 5.28,
+ "words": [
+  {
+   "word": "Then",
+   "start": 0.0,
+   "end": 0.16
+  },
+  {
+   "word": "the",
+   "start": 0.18,
+   "end": 0.24
+  },
+  {
+   "word": "proof:",
+   "start": 0.32,
+   "end": 0.8
+  },
+  {
+   "word": "liquidation",
+   "start": 0.926,
+   "end": 2.0
+  },
+  {
+   "word": "pushed",
+   "start": 2.046,
+   "end": 2.32
+  },
+  {
+   "word": "back,",
+   "start": 2.384,
+   "end": 2.72
+  },
+  {
+   "word": "your",
+   "start": 2.816,
+   "end": 3.2
+  },
+  {
+   "word": "buffer",
+   "start": 3.257,
+   "end": 3.6
+  },
+  {
+   "word": "more",
+   "start": 3.76,
+   "end": 4.4
+  },
+  {
+   "word": "than",
+   "start": 4.448,
+   "end": 4.64
+  },
+  {
+   "word": "doubled.",
+   "start": 4.7,
+   "end": 5.28
+  }
+ ]
+}

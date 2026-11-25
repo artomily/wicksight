@@ -80,9 +80,11 @@ def main() -> None:
     ap.add_argument("--style", type=float, default=0.3)
     ap.add_argument("--speed", type=float, default=0.0, help="0 = model default; only multilingual_v2 supports it")
     ap.add_argument("--only", default="", help="comma-separated beat ids")
+    ap.add_argument("--lines", type=Path, default=LINES)
+    ap.add_argument("--report", type=Path, default=OUT / "durations.json")
     args = ap.parse_args()
 
-    spec = json.loads(LINES.read_text())
+    spec = json.loads(args.lines.read_text())
     key = api_key(args.env_file)
     OUT.mkdir(parents=True, exist_ok=True)
     only = {s.strip() for s in args.only.split(",") if s.strip()}
@@ -116,7 +118,7 @@ def main() -> None:
         report[beat["id"]] = {"seconds": round(d, 2), "words": words, "wpm": round(words / d * 60, 1)}
         print(f"{beat['id']}: {d:.2f}s, {words} words, {words / d * 60:.0f} wpm")
 
-    (OUT / "durations.json").write_text(json.dumps(report, indent=1) + "\n")
+    args.report.write_text(json.dumps(report, indent=1) + "\n")
 
 
 if __name__ == "__main__":

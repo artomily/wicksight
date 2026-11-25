@@ -1,0 +1,93 @@
+{
+ "id": "v4-8",
+ "window": "51-60 end",
+ "text": "Trade-only keys. Withdrawals refused. Nothing moves without your yes. WickSight: see it coming, get out in time.",
+ "seconds": 10.0,
+ "words": [
+  {
+   "word": "Trade-only",
+   "start": 0.0,
+   "end": 0.72
+  },
+  {
+   "word": "keys.",
+   "start": 0.832,
+   "end": 1.36
+  },
+  {
+   "word": "Withdrawals",
+   "start": 1.484,
+   "end": 2.64
+  },
+  {
+   "word": "refused.",
+   "start": 2.74,
+   "end": 3.52
+  },
+  {
+   "word": "Nothing",
+   "start": 3.61,
+   "end": 4.24
+  },
+  {
+   "word": "moves",
+   "start": 4.293,
+   "end": 4.56
+  },
+  {
+   "word": "without",
+   "start": 4.61,
+   "end": 4.96
+  },
+  {
+   "word": "your",
+   "start": 4.992,
+   "end": 5.12
+  },
+  {
+   "word": "yes.",
+   "start": 5.26,
+   "end": 5.76
+  },
+  {
+   "word": "WickSight:",
+   "start": 5.984,
+   "end": 7.28
+  },
+  {
+   "word": "see",
+   "start": 7.42,
+   "end": 7.84
+  },
+  {
+   "word": "it",
+   "start": 7.893,
+   "end": 8.0
+  },
+  {
+   "word": "coming,",
+   "start": 8.057,
+   "end": 8.48
+  },
+  {
+   "word": "get",
+   "start": 8.64,
+   "end": 9.12
+  },
+  {
+   "word": "out",
+   "start": 9.16,
+   "end": 9.28
+  },
+  {
+   "word": "in",
+   "start": 9.333,
+   "end": 9.44
+  },
+  {
+   "word": "time.",
+   "start": 9.536,
+   "end": 10.0
+  }
+ ]
+}

@@ -1,0 +1,43 @@
+{
+ "id": "v4-7",
+ "window": "48-51 simulator",
+ "text": "Running today in the Even Hub simulator.",
+ "seconds": 3.44,
+ "words": [
+  {
+   "word": "Running",
+   "start": 0.0,
+   "end": 0.24
+  },
+  {
+   "word": "today",
+   "start": 0.333,
+   "end": 0.8
+  },
+  {
+   "word": "in",
+   "start": 0.987,
+   "end": 1.36
+  },
+  {
+   "word": "the",
+   "start": 1.4,
+   "end": 1.52
+  },
+  {
+   "word": "Even",
+   "start": 1.6,
+   "end": 1.92
+  },
+  {
+   "word": "Hub",
+   "start": 2.02,
+   "end": 2.32
+  },
+  {
+   "word": "simulator.",
+   "start": 2.416,
+   "end": 3.44
+  }
+ ]
+}
