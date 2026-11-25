@@ -40,7 +40,10 @@ interface Captured {
  * Stubbed Binance testnet. Exercises request signing, order payload shape and
  * response parsing without touching the network or needing keys.
  */
-function stubBinance(orderResponse: unknown = { orderId: 123, status: 'FILLED', executedQty: '0.005', avgPrice: '64010' }) {
+function stubBinance(
+  orderResponse: unknown = { orderId: 123, status: 'FILLED', executedQty: '0.005', avgPrice: '64010' },
+  restrictions: Record<string, unknown> = { enableWithdrawals: false, enableFutures: true, ipRestrict: true },
+) {
   const original = globalThis.fetch
   const calls: Captured[] = []
 
@@ -49,6 +52,9 @@ function stubBinance(orderResponse: unknown = { orderId: 123, status: 'FILLED', 
     const method = init?.method ?? 'GET'
     calls.push({ url, method })
 
+    if (url.includes('/sapi/v1/account/apiRestrictions')) {
+      return new Response(JSON.stringify(restrictions), { status: 200 })
+    }
     if (url.includes('/fapi/v1/exchangeInfo')) {
       return new Response(JSON.stringify(EXCHANGE_INFO), { status: 200 })
     }
@@ -201,4 +207,25 @@ test('a 429 flips the adapter to PAUSED and stops every follow-up call', async (
 
   await assert.rejects(() => adapter.previewCloseHalf('BTCUSDT'), /paused this IP/)
   assert.equal(calls, afterFirst)
+})
+
+
+test('key safety refuses withdrawal-enabled keys and requires futures', async (t) => {
+  const bad = stubBinance(undefined, { enableWithdrawals: true, enableFutures: true })
+  t.after(bad.restore)
+  const adapter = new BinanceTestnetAdapter('key', 'secret')
+  await assert.rejects(() => adapter.keySafety(), /withdrawal permission is enabled/)
+})
+
+test('key safety reports a safe futures-only key', async (t) => {
+  const stub = stubBinance(undefined, { enableWithdrawals: false, enableFutures: true, ipRestrict: true })
+  t.after(stub.restore)
+  const adapter = new BinanceTestnetAdapter('key', 'secret', 'https://fapi.binance.com', 'wss://fstream.binance.com', true)
+  assert.equal(adapter.mode, 'binance-mainnet')
+  const safety = await adapter.keySafety()
+  assert.equal(safety.verified, true)
+  assert.equal(safety.withdrawals, false)
+  assert.equal(safety.futures, true)
+  assert.equal(safety.ipRestrict, true)
+  assert.equal(safety.mainnet, true)
 })

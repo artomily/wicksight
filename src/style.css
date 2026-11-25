@@ -311,3 +311,33 @@ button.ghost:hover {
     flex-wrap: wrap;
   }
 }
+
+.host-kv {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.45fr) 1fr;
+  gap: 8px 12px;
+  margin-top: 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.host-kv b {
+  color: var(--text);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.host-kv b[data-ok='false'] {
+  color: var(--warn);
+}
+
+.host-kv code {
+  color: var(--bright);
+  font-family: inherit;
+}
+
+.host-card .input-row button[hidden] {
+  display: none;
+}

@@ -20,12 +20,16 @@ function resolveExchange(): ExchangeName {
 
 const exchange = resolveExchange()
 
+const allowMainnet = str('ALLOW_MAINNET', '0') === '1'
+
 export const config = {
   port: Number(str('PORT', '8787')),
   // Loopback by default: a testnet order API should not be reachable from the LAN.
   host: str('HOST', '127.0.0.1'),
   symbol: str('SYMBOL', 'BTCUSDT').toUpperCase(),
   exchange,
+  /** Mainnet is off unless the operator opts in explicitly. */
+  allowMainnet,
   asrProvider: (str('ASR_PROVIDER', 'local').toLowerCase() as AsrProvider),
   asrModel: str('ASR_MODEL', 'onnx-community/whisper-small.en'),
   // Shared with the WebView (embedded by Vite) and required on order routes.
@@ -38,6 +42,17 @@ export const config = {
     .map((origin) => origin.trim())
     .filter(Boolean),
   warmAsr: str('WARM_ASR', '1') !== '0',
+  telegram: {
+    token: str('TELEGRAM_BOT_TOKEN'),
+    chatFile: str('TELEGRAM_CHAT_FILE', '.local/telegram-chat.json'),
+    disabled: str('TELEGRAM_ENABLED', '1') === '0',
+    deepLinkBase: str('TELEGRAM_DEEP_LINK_BASE', 'wicksight://close-half'),
+    thresholds: {
+      minutes: Number(str('TELEGRAM_ALERT_MINUTES', '10')) || 10,
+      bufferPct: Number(str('TELEGRAM_BUFFER_PCT', '5')) || 5,
+      cooldownMs: (Number(str('TELEGRAM_COOLDOWN_SEC', '300')) || 300) * 1_000,
+    },
+  },
   binance: {
     baseUrl: str('BINANCE_FUTURES_BASE', 'https://testnet.binancefuture.com'),
     wsBaseUrl: str('BINANCE_WS_BASE', 'wss://stream.binancefuture.com'),

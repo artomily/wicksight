@@ -12,6 +12,7 @@ export function createAdapter(): ExchangeAdapter {
         config.binance.apiSecret,
         config.binance.baseUrl,
         config.binance.wsBaseUrl,
+        config.allowMainnet,
       )
     case 'okx':
       return new OkxDemoAdapter(

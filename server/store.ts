@@ -18,6 +18,8 @@ export interface AlertSnapshot {
  */
 export class AlertStore {
   private alert: AlertSnapshot | null = null
+  /** Called once when a pending alert crosses its price. */
+  onTrigger: ((alert: AlertSnapshot) => void) | null = null
 
   set(price: number, markPrice: number, symbol = 'BTCUSDT'): AlertSnapshot {
     const direction: AlertDirection = price >= markPrice ? 'above' : 'below'
@@ -31,7 +33,10 @@ export class AlertStore {
     if (symbol !== undefined && symbol !== this.alert.symbol) return this.alert
     const hit =
       this.alert.direction === 'above' ? markPrice >= this.alert.price : markPrice <= this.alert.price
-    if (hit) this.alert.triggeredAt = Date.now()
+    if (hit) {
+      this.alert.triggeredAt = Date.now()
+      this.onTrigger?.(this.alert)
+    }
     return this.alert
   }
 

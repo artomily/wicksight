@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Local state (paired Telegram chat id, etc.)
+.local/
+
 # Secrets — never commit keys
 .env
 .env.*

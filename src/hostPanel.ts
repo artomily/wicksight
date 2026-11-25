@@ -1,11 +1,11 @@
 import { API_BASE, api } from './api'
-import { fmtPrice, fmtQty, fmtSigned, modeLabel } from './format'
+import { fmtPrice, modeLabel } from './format'
 import { voxelLensSvg } from './voxel'
 
 /**
  * Phone-side host page. The glasses UI is drawn by the Even Hub bridge, not by
- * this page. This panel exists so the operator can see connection state and
- * test the intent parser without speaking.
+ * this page. This panel exists so the operator can see connection state, the
+ * key-safety posture, background alert pairing, and test the intent parser.
  */
 export function mountHostPanel(): void {
   const root = document.querySelector<HTMLDivElement>('#app')
@@ -21,10 +21,10 @@ export function mountHostPanel(): void {
       <section class="host-hero">
         <div class="host-copy">
           <span class="eyebrow">BENCH · TESTNET</span>
-          <h1>One position.<br />One screen.</h1>
+          <h1>Every position.<br />The riskiest first.</h1>
           <p class="sub">
-            The glasses draw the HUD. This panel is the bench: connection state and the
-            same intent parser, without speaking.
+            The glasses draw one HUD. This panel is the bench: connection state,
+            key safety, background alerts, and the same intent parser, without speaking.
           </p>
         </div>
         <div class="host-voxel">${voxelLensSvg(220)}</div>
@@ -33,14 +33,14 @@ export function mountHostPanel(): void {
       <section class="host-grid">
         <div class="host-cell"><span class="host-k">API</span><span class="host-v" id="h-api">connecting…</span></div>
         <div class="host-cell"><span class="host-k">MODE</span><span class="host-v" id="h-mode">—</span></div>
-        <div class="host-cell"><span class="host-k">POSITION</span><span class="host-v" id="h-pos">—</span></div>
-        <div class="host-cell"><span class="host-k">ALERT</span><span class="host-v" id="h-alert">none</span></div>
+        <div class="host-cell"><span class="host-k">RISK ORDER</span><span class="host-v" id="h-risk">—</span></div>
+        <div class="host-cell"><span class="host-k">OPEN · ALERT</span><span class="host-v" id="h-open">— · none</span></div>
       </section>
 
       <section class="host-card">
         <span class="eyebrow">PARSER</span>
         <h2>Test a command.</h2>
-        <p class="fine">Same parser as the glasses. No audio needed.</p>
+        <p class="fine">Same parser as the glasses. No audio needed. Close half targets the riskiest position.</p>
         <div class="input-row">
           <input id="h-cmd" autocomplete="off" placeholder="alert 61,500" />
           <button id="h-send" type="button">Parse</button>
@@ -48,9 +48,37 @@ export function mountHostPanel(): void {
         <pre id="h-out" class="out">Try “alert 61,500” or “close half”.</pre>
       </section>
 
+      <section class="host-card">
+        <span class="eyebrow">SECURITY · API KEYS</span>
+        <h2>Keys that cannot move funds.</h2>
+        <div class="host-kv" id="h-security">
+          <span>Checking the exchange permission endpoint…</span>
+        </div>
+        <p class="fine">
+          Read-only + futures trade only. Withdrawals are refused at boot. Use a
+          sub-account with an IP whitelist; testnet remains the default.
+        </p>
+      </section>
+
+      <section class="host-card">
+        <span class="eyebrow">BACKGROUND ALERTS · TELEGRAM</span>
+        <h2>When the app is closed.</h2>
+        <div class="host-kv" id="h-telegram">
+          <span>Checking Telegram…</span>
+        </div>
+        <div class="input-row">
+          <button id="h-telegram-test" type="button" hidden>Send mock alert</button>
+        </div>
+        <p class="fine">
+          The server watches ETA and buffer on every position tick. Pair with
+          <code>/start</code>; the bot only notifies and links back to the glasses
+          confirmation. It never places an order.
+        </p>
+      </section>
+
       <footer class="host-foot">
         <span>${API_BASE}</span>
-        <button id="h-reset" class="ghost" type="button" hidden>Reset demo position</button>
+        <button id="h-reset" class="ghost" type="button" hidden>Reset demo positions</button>
       </footer>
     </main>
   `
@@ -58,9 +86,12 @@ export function mountHostPanel(): void {
   const $ = <T extends HTMLElement>(id: string) => root.querySelector<T>(`#${id}`)!
   const apiEl = $<HTMLSpanElement>('h-api')
   const modeEl = $<HTMLSpanElement>('h-mode')
-  const posEl = $<HTMLSpanElement>('h-pos')
-  const alertEl = $<HTMLSpanElement>('h-alert')
+  const riskEl = $<HTMLSpanElement>('h-risk')
+  const openEl = $<HTMLSpanElement>('h-open')
   const outEl = $<HTMLPreElement>('h-out')
+  const securityEl = $<HTMLDivElement>('h-security')
+  const telegramEl = $<HTMLDivElement>('h-telegram')
+  const telegramTest = $<HTMLButtonElement>('h-telegram-test')
   const input = $<HTMLInputElement>('h-cmd')
   const send = $<HTMLButtonElement>('h-send')
   const reset = $<HTMLButtonElement>('h-reset')
@@ -69,23 +100,86 @@ export function mountHostPanel(): void {
 
   async function refresh() {
     try {
-      const state = await api.state()
+      const [state, security] = await Promise.all([api.state(), api.security()])
       const p = state.position
       mode = p.mode
       apiEl.textContent = 'online'
       apiEl.dataset.ok = 'true'
       modeEl.textContent = `${modeLabel(p.mode)} · ${p.symbol}`
-      posEl.textContent = p.hasPosition
-        ? `${p.side} ${fmtQty(p.qty, p.qtyDecimals)} · ${fmtSigned(p.unrealizedPnl)} USDT · ${fmtPrice(p.markPrice, p.priceDecimals)}`
-        : 'flat'
-      alertEl.textContent = state.alert
-        ? `${fmtPrice(state.alert.price, 0)} (${state.alert.direction})${state.alert.triggeredAt ? ' · hit' : ''}`
-        : 'none'
+      riskEl.textContent = state.header
+      riskEl.title = state.positions
+        .filter((entry) => entry.position.hasPosition)
+        .map((entry) => `${entry.position.symbol} ${entry.position.distanceToLiqPct?.toFixed(1) ?? '—'}%`)
+        .join(' · ')
+      const open = state.positions.filter((entry) => entry.position.hasPosition)
+      const alert = state.alert
+      openEl.textContent = `${open.length} open · ${
+        alert
+          ? `${alert.symbol} ${fmtPrice(alert.price, 0)}${alert.triggeredAt ? ' hit' : ''}`
+          : 'no alert'
+      }`
       reset.hidden = mode !== 'mock'
+      renderSecurity(security)
+      renderTelegram(security.telegram)
     } catch (err) {
       apiEl.textContent = (err as Error).message
       apiEl.dataset.ok = 'false'
+      securityEl.innerHTML = '<span>Security status unavailable while the API is offline.</span>'
+      telegramEl.innerHTML = '<span>Telegram status unavailable while the API is offline.</span>'
+      telegramTest.hidden = true
     }
+  }
+
+  function renderSecurity(security: Awaited<ReturnType<typeof api.security>>) {
+    const s = security.keySafety
+    const rows: string[] = [
+      `<span>Mode</span><b>${security.testnetOnly ? 'testnet / paper' : 'MAINNET OPT-IN'}</b>`,
+    ]
+    if (s) {
+      rows.push(
+        `<span>Withdrawals</span><b data-ok="${String(s.withdrawals !== true)}">${
+          s.withdrawals === true ? 'ENABLED — REFUSED' : s.withdrawals === false ? 'disabled' : 'unverified'
+        }</b>`,
+      )
+      rows.push(
+        `<span>Futures trade</span><b data-ok="${String(s.futures !== false)}">${
+          s.futures === true ? 'enabled' : s.futures === false ? 'missing — REFUSED' : 'unverified'
+        }</b>`,
+      )
+      rows.push(
+        `<span>IP whitelist</span><b data-ok="${String(s.ipRestrict !== false)}">${
+          s.ipRestrict === true ? 'on' : s.ipRestrict === false ? 'recommended' : 'unverified'
+        }</b>`,
+      )
+      if (s.warning) rows.push(`<span>Note</span><b>${escapeHtml(s.warning)}</b>`)
+    } else {
+      rows.push('<span>Key check</span><b>not applicable (mock/OKX)</b>')
+    }
+    if (security.mainnetOptIn) {
+      rows.push('<span>Warning</span><b>ALLOW_MAINNET=1 — real funds</b>')
+    }
+    securityEl.innerHTML = rows.join('')
+  }
+
+  function renderTelegram(status: Awaited<ReturnType<typeof api.security>>['telegram']) {
+    if (!status) {
+      telegramEl.innerHTML = '<span>Telegram is disabled on this server.</span>'
+      telegramTest.hidden = true
+      return
+    }
+    const pair =
+      status.mode === 'mock'
+        ? 'mock mode — no token'
+        : status.paired
+          ? `paired · ${status.chatIdMasked ?? ''}`
+          : 'waiting for /start'
+    const latest = status.recent.at(-1)
+    telegramEl.innerHTML = [
+      `<span>Delivery</span><b>${status.mode} · ${pair}</b>`,
+      `<span>Thresholds</span><b>ETA &lt; ${status.thresholds.minutes}m · buffer &lt; ${status.thresholds.bufferPct}%</b>`,
+      latest ? `<span>Last alert</span><b>${escapeHtml(latest.text.split('\n')[0] ?? '')}</b>` : '',
+    ].join('')
+    telegramTest.hidden = status.mode !== 'mock'
   }
 
   async function parse() {
@@ -112,12 +206,29 @@ export function mountHostPanel(): void {
     if (event.key === 'Enter') void parse()
   })
 
+  telegramTest.addEventListener('click', async () => {
+    telegramTest.disabled = true
+    try {
+      await api.telegramTest()
+      outEl.textContent = 'Mock Telegram alert queued. Check the server log and the card above.'
+      await refresh()
+    } catch (err) {
+      outEl.textContent = (err as Error).message
+    } finally {
+      telegramTest.disabled = false
+    }
+  })
+
   reset.addEventListener('click', async () => {
     await fetch(`${API_BASE}/api/dev/reset`, { method: 'POST' })
-    outEl.textContent = 'Demo position reset to 0.010 BTC.'
+    outEl.textContent = 'Demo positions reset to BTC, ETH, and SOL.'
     void refresh()
   })
 
   void refresh()
   setInterval(() => void refresh(), 6000)
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char)
 }

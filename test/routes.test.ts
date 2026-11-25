@@ -354,3 +354,35 @@ test('price alerts carry the symbol they watch', async () => {
     await app.close()
   }
 })
+
+
+test('closing half on the mock account moves the liquidation line away', async () => {
+  const adapter = new MockAdapter()
+  const before = await adapter.getPosition('SOLUSDT')
+  const preview = await adapter.previewCloseHalf('SOLUSDT')
+  await adapter.executeCloseHalf('SOLUSDT', preview.qty)
+  const after = await adapter.getPosition('SOLUSDT')
+  assert.ok(before.liqPrice && after.liqPrice)
+  assert.ok(after.liqPrice! < before.liqPrice!, 'a long close should lower the liq line')
+  assert.ok(after.distanceToLiqPct! > before.distanceToLiqPct!, 'the buffer should improve')
+})
+
+
+test('security status is read-only and reports no key check in mock mode', async () => {
+  const { app } = await harness()
+  try {
+    const res = await app.inject({ method: 'GET', url: '/api/security', headers: { origin: APP_ORIGIN } })
+    assert.equal(res.statusCode, 200)
+    const body = res.json()
+    assert.equal(body.mode, 'mock')
+    assert.equal(body.testnetOnly, true)
+    assert.equal(body.mainnetOptIn, false)
+    assert.equal(body.keySafety, null)
+    assert.equal(body.telegram, null)
+
+    const off = await app.inject({ method: 'POST', url: '/api/telegram/test' })
+    assert.equal(off.statusCode, 404)
+  } finally {
+    await app.close()
+  }
+})

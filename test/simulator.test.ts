@@ -81,3 +81,15 @@ test('speed controls simulated time, reset restores the entered position', () =>
   assert.equal(state.markPrice, 59_000)
   assert.equal(state.running, false)
 })
+
+
+test('scenario drift is proportional to price, so a 152 USDT SOL book survives a dump', () => {
+  const sol = new MarketSimulator({ side: 'LONG', size: 4, leverage: 25, entry: 152, symbol: 'SOLUSDT', seed: 21 })
+  sol.setScenario('dump')
+  sol.setSpeed(20)
+  sol.start()
+  for (let i = 0; i < 30; i++) sol.tick(100)
+  const state = sol.snapshot()
+  assert.ok(state.markPrice > 140, `SOL collapsed to ${state.markPrice}`)
+  assert.ok(state.position.distanceToLiqPct !== null && state.position.distanceToLiqPct > 0)
+})

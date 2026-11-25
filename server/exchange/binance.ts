@@ -16,6 +16,8 @@ const BASE = 'https://testnet.binancefuture.com'
 const WS_BASE = 'wss://stream.binancefuture.com'
 const TESTNET_HOSTS = ['testnet.binancefuture.com']
 const TESTNET_WS_HOSTS = ['stream.binancefuture.com']
+const MAINNET_HOSTS = ['fapi.binance.com']
+const MAINNET_WS_HOSTS = ['fstream.binance.com']
 
 interface SymbolRules {
   stepSize: string
@@ -37,9 +39,10 @@ interface PositionRiskRow {
 }
 
 export class BinanceTestnetAdapter implements ExchangeAdapter {
-  readonly mode = 'binance-testnet'
+  readonly mode: string
   readonly exchange = 'binance'
   readonly wsBaseUrl: string
+  readonly mainnet: boolean
   private pauseUntil = 0
 
   constructor(
@@ -47,12 +50,15 @@ export class BinanceTestnetAdapter implements ExchangeAdapter {
     private readonly apiSecret: string,
     baseUrl: string = BASE,
     wsBaseUrl: string = WS_BASE,
+    allowMainnet = false,
   ) {
-    assertNonProductionHost(baseUrl, TESTNET_HOSTS)
-    assertNonProductionHost(wsBaseUrl, TESTNET_WS_HOSTS)
+    assertNonProductionHost(baseUrl, allowMainnet ? [...TESTNET_HOSTS, ...MAINNET_HOSTS] : TESTNET_HOSTS)
+    assertNonProductionHost(wsBaseUrl, allowMainnet ? [...TESTNET_WS_HOSTS, ...MAINNET_WS_HOSTS] : TESTNET_WS_HOSTS)
     if (!apiKey || !apiSecret) {
       throw new ExchangeError('BINANCE_API_KEY / BINANCE_API_SECRET are missing in .env', 500, 'NO_KEYS')
     }
+    this.mainnet = new URL(baseUrl).hostname.toLowerCase() === 'fapi.binance.com'
+    this.mode = this.mainnet ? 'binance-mainnet' : 'binance-testnet'
     this.baseUrl = baseUrl.replace(/\/$/, '')
     this.wsBaseUrl = wsBaseUrl.replace(/\/$/, '')
   }
@@ -251,6 +257,34 @@ export class BinanceTestnetAdapter implements ExchangeAdapter {
     }
   }
 
+  async apiRestrictions(): Promise<ApiRestrictions> {
+    return this.signed<ApiRestrictions>('GET', '/sapi/v1/account/apiRestrictions')
+  }
+
+  /**
+   * Refuse a key that can withdraw, and require futures trading. On mainnet a
+   * failed check is fatal; on testnet a network/ban failure is a warning so the
+   * paper demo can still start.
+   */
+  async keySafety(): Promise<KeySafety> {
+    try {
+      const restrictions = await this.apiRestrictions()
+      return checkKeyRestrictions(restrictions, this.mainnet)
+    } catch (err) {
+      const policy = err instanceof ExchangeError && Boolean(err.code?.startsWith('KEY_'))
+      if (this.mainnet || policy) throw err
+      return {
+        verified: false,
+        withdrawals: null,
+        futures: null,
+        ipRestrict: null,
+        margin: null,
+        mainnet: false,
+        warning: `Key restrictions could not be verified: ${(err as Error).message}`,
+      }
+    }
+  }
+
   /** User data stream key. No signature; the API key header is enough. */
   async createListenKey(): Promise<string> {
     const res = await this.call(`${this.baseUrl}/fapi/v1/listenKey`, 'POST')
@@ -321,6 +355,53 @@ export class BinanceTestnetAdapter implements ExchangeAdapter {
       qtyDecimals: rules.qtyDecimals,
       at: Date.now(),
     }
+  }
+}
+
+export interface ApiRestrictions {
+  enableWithdrawals?: boolean
+  enableFutures?: boolean
+  enableSpotAndMarginTrading?: boolean
+  enableMargin?: boolean
+  ipRestrict?: boolean
+}
+
+export interface KeySafety {
+  verified: boolean
+  withdrawals: boolean | null
+  futures: boolean | null
+  ipRestrict: boolean | null
+  margin: boolean | null
+  mainnet: boolean
+  warning?: string
+}
+
+/** Withdrawal permission is an absolute refusal; futures trade is required. */
+export function checkKeyRestrictions(restrictions: ApiRestrictions, mainnet: boolean): KeySafety {
+  const withdrawals = restrictions.enableWithdrawals === true
+  const futures = restrictions.enableFutures === true
+  if (withdrawals) {
+    throw new ExchangeError(
+      'Refusing this API key: withdrawal permission is enabled. Create a futures-only key, ideally on a sub-account with an IP whitelist.',
+      500,
+      'KEY_WITHDRAWAL_ENABLED',
+    )
+  }
+  if (!futures) {
+    throw new ExchangeError(
+      'Refusing this API key: futures trading is not enabled. Enable futures trade only, never withdrawals.',
+      500,
+      'KEY_NO_FUTURES',
+    )
+  }
+  return {
+    verified: true,
+    withdrawals,
+    futures,
+    ipRestrict: restrictions.ipRestrict === true,
+    margin: restrictions.enableMargin === true,
+    mainnet,
+    warning: restrictions.ipRestrict === true ? undefined : 'No IP whitelist on this key. Add one in Binance.',
   }
 }
 

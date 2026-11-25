@@ -14,6 +14,8 @@ interface MockBook {
   side: Side
   startQty: number
   qty: number
+  startMargin: number
+  margin: number
   entryPrice: number
   leverage: number
   stepSize: string
@@ -42,7 +44,7 @@ function solSaw(t: number): number {
 }
 
 function defaultBooks(): MockBook[] {
-  return [
+  const books: Array<Omit<MockBook, 'startMargin' | 'margin'>> = [
     {
       symbol: 'BTCUSDT',
       side: 'LONG',
@@ -80,6 +82,10 @@ function defaultBooks(): MockBook[] {
       mark: solSaw,
     },
   ]
+  return books.map((book) => {
+    const margin = (book.entryPrice * book.startQty) / book.leverage
+    return { ...book, startMargin: margin, margin }
+  })
 }
 
 /**
@@ -107,9 +113,9 @@ export class MockAdapter implements ExchangeAdapter {
     const markPrice = book.mark(this.seconds())
     const { qty, entryPrice, leverage, side } = book
     const pnl = (side === 'LONG' ? markPrice - entryPrice : entryPrice - markPrice) * qty
-    const margin = (entryPrice * qty) / leverage
-    const liqPrice =
-      side === 'LONG' ? entryPrice * (1 - 1 / leverage + 0.005) : entryPrice * (1 + 1 / leverage - 0.005)
+    const margin = book.margin
+    const buffer = qty > 0 ? (margin - qty * entryPrice * 0.005) / qty : 0
+    const liqPrice = side === 'LONG' ? entryPrice - buffer : entryPrice + buffer
     const open = qty > 0
     return {
       hasPosition: open,
@@ -196,6 +202,8 @@ export class MockAdapter implements ExchangeAdapter {
     if (qty <= 0 || qty > position.qty + 1e-9) {
       throw new ExchangeError('Refusing to send an order larger than the open position', 409, 'QTY_GUARD')
     }
+    const realized = (position.side === 'LONG' ? position.markPrice - position.entryPrice : position.entryPrice - position.markPrice) * qty
+    book.margin = Math.max(0, book.margin + realized)
     book.qty = Math.max(0, Number((position.qty - qty).toFixed(book.qtyDecimals)))
     return {
       orderId: `mock-${Date.now()}`,
@@ -210,6 +218,9 @@ export class MockAdapter implements ExchangeAdapter {
 
   /** Dev convenience: put every demo position back exactly where it started. */
   reset() {
-    for (const book of this.books) book.qty = book.startQty
+    for (const book of this.books) {
+      book.qty = book.startQty
+      book.margin = book.startMargin
+    }
   }
 }

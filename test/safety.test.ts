@@ -13,6 +13,13 @@ test('binance adapter refuses a production host at construction', () => {
   )
 })
 
+test('mainnet is refused unless it is explicitly allowed', () => {
+  assert.throws(
+    () => new BinanceTestnetAdapter('key', 'secret', 'https://fapi.binance.com', 'wss://fstream.binance.com'),
+    /Refusing to use/,
+  )
+})
+
 test('host gate only accepts the testnet host', () => {
   assert.doesNotThrow(() => assertNonProductionHost('https://testnet.binancefuture.com', ['testnet.binancefuture.com']))
   assert.throws(() => assertNonProductionHost('https://fapi.binance.com', ['testnet.binancefuture.com']))

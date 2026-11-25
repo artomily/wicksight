@@ -12,6 +12,8 @@ import { computeLiqEta, type LiqEta, type MarkBook } from './eta.ts'
 import type { PositionSnapshot } from './exchange/types.ts'
 import { rankByRisk, riskHeader } from '../shared/risk.ts'
 import { buildCloseReceipt } from './receipt.ts'
+import type { KeySafety } from './exchange/binance.ts'
+import type { TelegramBot } from './telegram.ts'
 
 export interface AppDeps {
   adapter: ExchangeAdapter
@@ -24,6 +26,9 @@ export interface AppDeps {
   corsOrigins: string[]
   asr: string
   keys: boolean | null
+  allowMainnet?: boolean
+  keySafety?: KeySafety | null
+  telegram?: TelegramBot | null
 }
 
 /**
@@ -33,6 +38,7 @@ export interface AppDeps {
 export function buildApp(deps: AppDeps): FastifyInstance {
   const app = Fastify({ logger: false, bodyLimit: 2 * 1024 * 1024 })
   const { adapter, feed, alerts, previews, symbol } = deps
+  const testnetOnly = adapter.mode !== 'binance-mainnet'
 
   let orderInFlight = false
 
@@ -116,7 +122,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     name: 'WickSight API',
     mode: adapter.mode,
     symbol,
-    testnetOnly: true,
+    testnetOnly,
   }))
 
   app.get('/api/health', async () => ({
@@ -128,6 +134,28 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     feed: feed.meta(),
     uptimeSec: Math.round(process.uptime()),
   }))
+
+  app.get('/api/security', async () => ({
+    mode: adapter.mode,
+    testnetOnly,
+    mainnetOptIn: Boolean(deps.allowMainnet),
+    keySafety: deps.keySafety ?? null,
+    telegram: deps.telegram?.status() ?? null,
+  }))
+
+  app.get('/api/telegram', async () => deps.telegram?.status() ?? null)
+
+  app.post('/api/telegram/test', async (_req, reply) => {
+    if (!deps.telegram) return reply.status(404).send({ error: 'TELEGRAM_OFF', message: 'Telegram is disabled' })
+    if (deps.telegram.mode !== 'mock') {
+      return reply.status(401).send({
+        error: 'TELEGRAM_REAL',
+        message: 'Send /test from the paired Telegram chat; the HTTP demo route is mock-only.',
+      })
+    }
+    const sent = await deps.telegram.sendDemo()
+    return { ok: sent }
+  })
 
   app.get('/api/state', async (_req, reply) => {
     const entries = ranked()
@@ -155,7 +183,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       positions: entries.filter((entry) => entry.position.hasPosition || entries.length === 1),
       header: riskHeader(entries),
       meta: {
-        testnetOnly: true,
+        testnetOnly,
         mode: position.mode,
         exchange: position.exchange,
         symbol,
