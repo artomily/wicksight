@@ -1,4 +1,4 @@
-import { AbsoluteFill, Audio, Img, Sequence, interpolate, spring, staticFile, useCurrentFrame } from 'remotion'
+import { AbsoluteFill, Audio, Img, OffthreadVideo, Sequence, interpolate, spring, staticFile, useCurrentFrame } from 'remotion'
 import { Backdrop } from './components/Backdrop'
 import { CaptionTrack } from './components/CaptionTrack'
 import {
@@ -24,8 +24,8 @@ const RECEIPT: HudReceipt = {
 }
 
 const SECTIONS_1MIN = {
-  cold: { from: 0, duration: 150 },
-  glance: { from: 150, duration: 300 },
+  concept: { from: 0, duration: 240 },
+  glance: { from: 240, duration: 210 },
   alert: { from: 450, duration: 300 },
   close: { from: 750, duration: 510 },
   receipt: { from: 1260, duration: 240 },
@@ -219,41 +219,157 @@ const HudFrame: React.FC<{
   )
 }
 
-const Cold: React.FC = () => {
-  const frame = useCurrentFrame()
-  const pulse = 0.6 + 0.4 * Math.abs(Math.sin(frame / 9))
+const conceptFade = (frame: number, start: number, end: number) =>
+  Math.min(
+    interpolate(frame, [start, start + 10], [0, 1], {
+      extrapolateLeft: 'clamp',
+      extrapolateRight: 'clamp',
+    }),
+    interpolate(frame, [end - 12, end], [1, 0], {
+      extrapolateLeft: 'clamp',
+      extrapolateRight: 'clamp',
+    }),
+  )
 
+const LensPanel: React.FC<{ frame: number; children: React.ReactNode }> = ({ frame, children }) => {
+  const p = spring({ frame, fps: FPS, config: { damping: 200, mass: 0.7 } })
+  const float = Math.sin(frame / 22) * 3
   return (
-    <>
+    <div
+      style={{
+        position: 'absolute',
+        left: 24,
+        top: 300,
+        width: 620,
+        height: 340,
+        opacity: p,
+        transform: `translateY(${(1 - p) * 20 + float}px) perspective(1400px) rotateY(3deg)`,
+      }}
+    >
       <div
         style={{
           position: 'absolute',
           inset: 0,
-          background:
-            'radial-gradient(900px 620px at 50% 34%, rgba(255,106,92,0.14), transparent 66%)',
-          opacity: pulse,
+          borderRadius: 18,
+          background: 'rgba(2,8,5,0.46)',
+          border: '1px solid rgba(70,224,138,0.45)',
+          boxShadow: '0 0 90px rgba(0,255,120,0.16), inset 0 0 60px rgba(0,255,120,0.05)',
+          backdropFilter: 'blur(8px)',
         }}
       />
-      <Head
-        frame={frame + 12}
-        kick="DANGER · LIQ IN ~4m"
-        title="The clock is the risk."
-        sub="Four minutes to liquidation at this pace."
-        danger
+      <div style={{ position: 'absolute', left: 10, top: 10, width: 24, height: 24, borderTop: '2px solid rgba(70,224,138,0.8)', borderLeft: '2px solid rgba(70,224,138,0.8)' }} />
+      <div style={{ position: 'absolute', right: 10, top: 10, width: 24, height: 24, borderTop: '2px solid rgba(70,224,138,0.8)', borderRight: '2px solid rgba(70,224,138,0.8)' }} />
+      <div style={{ position: 'absolute', left: 10, bottom: 10, width: 24, height: 24, borderBottom: '2px solid rgba(70,224,138,0.8)', borderLeft: '2px solid rgba(70,224,138,0.8)' }} />
+      <div style={{ position: 'absolute', right: 10, bottom: 10, width: 24, height: 24, borderBottom: '2px solid rgba(70,224,138,0.8)', borderRight: '2px solid rgba(70,224,138,0.8)' }} />
+      <div
+        style={{
+          position: 'absolute',
+          left: 22,
+          top: 18,
+          width: 576,
+          height: 288,
+          transform: 'scale(1)',
+          transformOrigin: 'top left',
+          mixBlendMode: 'screen',
+        }}
+      >
+        {children}
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          left: 22,
+          bottom: 12,
+          fontFamily: F.mono,
+          fontSize: 8,
+          letterSpacing: 1.8,
+          color: 'rgba(70,224,138,0.55)',
+        }}
+      >
+        EVEN G2 · LENS FEED · 576×288
+      </div>
+    </div>
+  )
+}
+
+const ConceptOpen: React.FC = () => {
+  const frame = useCurrentFrame()
+  const total = SECTIONS_1MIN.concept.duration
+  const fadeIn = interpolate(frame, [0, 12], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  })
+  const fadeOut = interpolate(frame, [total - 6, total], [1, 0], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  })
+  const position = conceptFade(frame, 0, 84)
+  const confirm = conceptFade(frame, 78, 162)
+  const filled = conceptFade(frame, 156, 252)
+  const selected: 'no' | 'yes' = frame < 120 ? 'no' : 'yes'
+
+  return (
+    <AbsoluteFill style={{ opacity: fadeIn * fadeOut, backgroundColor: '#000' }}>
+      <OffthreadVideo
+        src={staticFile('ai-concept-1080.mp4')}
+        muted
+        volume={0}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          transform: `scale(${1 + (frame / total) * 0.03})`,
+          filter: 'contrast(1.02) saturate(0.94)',
+        }}
       />
-      <HudFrame frame={frame + 12} danger badge="● DANGER · REPLAY">
-        <HudPosition
-          qty="0.01"
-          pnl="-0.06"
-          roe="-0.2%"
-          liq="58,684.4"
-          distance="4.6"
-          hint="LIQ IN ~4m at this pace · buffer 4.6%"
-          hintTone="bright"
-          statusPulse={0.65 + 0.35 * Math.abs(Math.sin(frame / 9))}
-        />
-      </HudFrame>
-    </>
+      <AbsoluteFill
+        style={{
+          background:
+            'linear-gradient(90deg, rgba(4,7,6,0.66) 0%, rgba(4,7,6,0.22) 40%, rgba(4,7,6,0) 64%), linear-gradient(0deg, rgba(4,7,6,0.7) 0%, rgba(4,7,6,0) 34%)',
+        }}
+      />
+      <LensPanel frame={frame}>
+        <div style={{ position: 'absolute', inset: 0, opacity: position }}>
+          <HudPosition
+            qty="0.01"
+            pnl="-0.06"
+            roe="-0.2%"
+            liq="58,684.4"
+            distance="4.6"
+            hint="LIQ IN ~4m at this pace · buffer 4.6%"
+            hintTone="bright"
+            statusPulse={0.65 + 0.35 * Math.abs(Math.sin(frame / 9))}
+          />
+        </div>
+        <div style={{ position: 'absolute', inset: 0, opacity: confirm }}>
+          <HudConfirm selected={selected} />
+        </div>
+        <div style={{ position: 'absolute', inset: 0, opacity: filled }}>
+          <HudFilled qty="0.005" price="61,502.9" left="0.005" receipt={RECEIPT} />
+        </div>
+      </LensPanel>
+      <div
+        style={{
+          position: 'absolute',
+          left: 64,
+          top: 54,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '7px 10px',
+          borderRadius: 4,
+          background: 'rgba(4,7,6,0.55)',
+          border: '1px solid rgba(70,224,138,0.18)',
+          fontFamily: F.mono,
+          fontSize: 10,
+          letterSpacing: 2,
+          color: 'rgba(233,247,238,0.62)',
+        }}
+      >
+        <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'rgba(70,224,138,0.8)' }} />
+        CONCEPT VISUALIZATION · AI-GENERATED · NOT LIVE FOOTAGE
+      </div>
+    </AbsoluteFill>
   )
 }
 
@@ -578,8 +694,8 @@ export const OneMinute: React.FC<VideoProps> = ({ repo, music, voiceover }) => {
     <AbsoluteFill style={{ backgroundColor: C.bg }}>
       <Backdrop />
 
-      <Sequence from={SECTIONS_1MIN.cold.from} durationInFrames={SECTIONS_1MIN.cold.duration} name="Cold">
-        <Cold />
+      <Sequence from={SECTIONS_1MIN.concept.from} durationInFrames={SECTIONS_1MIN.concept.duration} name="Concept">
+        <ConceptOpen />
       </Sequence>
       <Sequence from={SECTIONS_1MIN.glance.from} durationInFrames={SECTIONS_1MIN.glance.duration} name="Glance">
         <Glance />

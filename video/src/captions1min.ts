@@ -8,7 +8,7 @@ export interface Caption1Min {
 
 /**
  * Captions for the 60-second cut. Times are absolute frames at 30 fps.
- * 0–5 cold · 5–15 glance · 15–25 alert · 25–42 close · 42–50 receipt · 50–60 end.
+ * 0–8 concept · 8–15 glance · 15–25 alert · 25–42 close · 42–50 receipt · 50–60 end.
  */
 export const CAPTIONS_1MIN: Caption1Min[] = [
   { from: seconds(0.4), to: seconds(4.8), text: 'LIQ IN ~4m at this pace. The clock is the risk.' },
