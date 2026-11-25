@@ -8,26 +8,30 @@ export interface Caption1Min {
 
 /**
  * Captions for the 60-second cut. Times are absolute frames at 30 fps.
- * 0–8 concept · 8–15 glance · 15–25 alert · 25–42 close · 42–50 receipt · 50–60 end.
+ * 0–8 concept · 8–14 Telegram · 14–16 glance · 16–21 alert · 21–25 multi ·
+ * 25–41 close · 41–48 receipt · 48–51 simulator · 51–60 end.
  */
 export const CAPTIONS_1MIN: Caption1Min[] = [
-  { from: seconds(0.4), to: seconds(4.8), text: 'LIQ IN ~4m at this pace. The clock is the risk.' },
+  { from: seconds(0.4), to: seconds(4.6), text: 'LIQ IN ~4m at this pace. The clock is the risk.' },
 
-  { from: seconds(5.4), to: seconds(9.2), text: 'One screen: position, PnL, distance to liq.' },
-  { from: seconds(9.2), to: seconds(14.6), text: 'And time: ~4 minutes at this pace.' },
+  { from: seconds(8.4), to: seconds(12.2), text: "While you're in another app, the warning lands in Telegram." },
 
-  { from: seconds(15.4), to: seconds(19.2), text: '"Alert 61,500."' },
-  { from: seconds(19.2), to: seconds(24.6), text: 'Armed while the app is open. Alert hit.' },
+  { from: seconds(14.2), to: seconds(17.0), text: 'One glance: position, distance, time.' },
+  { from: seconds(17.0), to: seconds(21.0), text: 'The alert fires at 61,500.' },
 
-  { from: seconds(25.4), to: seconds(29.6), text: '"Close half."' },
-  { from: seconds(29.6), to: seconds(35.4), text: 'Default is No.' },
-  { from: seconds(35.4), to: seconds(39.0), text: 'Swipe to Yes. Then tap.' },
-  { from: seconds(39.0), to: seconds(41.6), text: 'Reduce-only. Single-use preview.' },
+  { from: seconds(21.2), to: seconds(24.8), text: '3 positions · riskiest SOL ~10m.' },
 
-  { from: seconds(42.4), to: seconds(47.0), text: 'Buffer 4.6% → 9.6%.' },
-  { from: seconds(47.0), to: seconds(49.6), text: 'The receipt proves the risk moved.' },
+  { from: seconds(25.2), to: seconds(29.8), text: '"Close half."' },
+  { from: seconds(29.8), to: seconds(33.8), text: 'Default is No.' },
+  { from: seconds(33.8), to: seconds(37.8), text: 'Swipe to Yes. Then tap.' },
+  { from: seconds(37.8), to: seconds(41.0), text: 'Reduce-only. Testnet.' },
 
-  { from: seconds(50.4), to: seconds(54.4), text: 'Testnet only. Keys server-side. Explicit Yes.' },
-  { from: seconds(54.4), to: seconds(57.4), text: 'WickSight. github.com/artomily/wicksight' },
-  { from: seconds(57.4), to: seconds(59.8), text: 'Live demo: wicksight.vercel.app' },
+  { from: seconds(41.2), to: seconds(45.0), text: 'Buffer 4.6% → 9.6%.' },
+  { from: seconds(45.0), to: seconds(48.0), text: 'The receipt proves the risk moved.' },
+
+  { from: seconds(48.2), to: seconds(51.0), text: 'The same HUD, in the Even Hub simulator.' },
+
+  { from: seconds(51.2), to: seconds(55.0), text: 'Trade-only keys. Withdrawal keys refused.' },
+  { from: seconds(55.0), to: seconds(58.0), text: 'Testnet only. Explicit yes.' },
+  { from: seconds(58.0), to: seconds(59.8), text: 'WickSight. wicksight.vercel.app' },
 ]
