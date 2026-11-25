@@ -28,14 +28,14 @@ The bottom line is the gesture hint (`Hold: speak · 2x exit`) when the ETA is h
 
 ## Links
 
-- **Live demo:** https://wicksight.vercel.app — browser-only `DEMO · REPLAY` on the recorded 23 Nov testnet state; no keys, no exchange calls, no order API.
+- **Live demo:** https://wicksight.vercel.app — browser-only `DEMO · REPLAY` plus an interactive `SIMULATION`; no keys, no exchange calls, no order API.
 - **Demo video (60s, VO + music):** [wicksight-final.mp4](https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-final.mp4)
 - **Full cut (2:55):** [wicksight-full.mp4](https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-full.mp4)
 - **Deploy your own:** [one-step Vercel import](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fartomily%2Fwicksight) — no env vars; `vercel.json` builds `demo.html` into `dist-demo`.
 
 ## Static demo (Vercel)
 
-`npm run build:demo` builds only `demo.html` + `src/demo.ts` into `dist-demo/`. It does not bundle the server, `.env`, the API token or the Even Hub SDK. `vercel.json` points Vercel at that build and serves `/` as the demo; leave every environment variable empty. The page runs the recorded 23 Nov 2026 testnet HUD, with buttons and typed commands standing in for voice, and never calls an exchange or the order API.
+`npm run build:demo` builds only `demo.html` + `src/demo.ts` into `dist-demo/`. It does not bundle the server, `.env`, the API token or the order path. The simulator imports the shared HUD `PageSpec` builder (`src/ui.ts`), so the Even Hub SDK's text-container type is in the static bundle; it makes no BLE or device calls. `vercel.json` points Vercel at that build and serves `/` as the demo; leave every environment variable empty. The page runs the recorded 23 Nov 2026 testnet HUD, and the simulator runs a seeded synthetic tape with buttons, typed commands and browser mic standing in for voice. Neither calls an exchange or the order API.
 
 Preview it locally:
 
