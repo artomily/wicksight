@@ -1265,3 +1265,17 @@ h3 {
     grid-column: auto;
   }
 }
+
+.sim-selected {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+  color: var(--bright);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  vertical-align: 2px;
+}

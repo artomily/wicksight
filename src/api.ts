@@ -48,36 +48,63 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return json as T
 }
 
+export interface SecurityView {
+  mode: string
+  testnetOnly: boolean
+  mainnetOptIn: boolean
+  keySafety: {
+    verified: boolean
+    withdrawals: boolean | null
+    futures: boolean | null
+    ipRestrict: boolean | null
+    margin: boolean | null
+    mainnet: boolean
+    warning?: string
+  } | null
+  telegram: {
+    mode: 'telegram' | 'mock' | 'off'
+    paired: boolean
+    chatIdMasked: string | null
+    thresholds: { minutes: number; bufferPct: number; cooldownMs: number }
+    recent: Array<{ at: number; kind: string; text: string }>
+  } | null
+}
+
 export const api = {
   state: () => request<StateResponse>('/api/state'),
 
-  setAlert: (price: number) =>
-    request<{ alert: { price: number; direction: 'above' | 'below' } }>('/api/alert', {
+  security: () => request<SecurityView>('/api/security'),
+
+  telegramTest: () => request<{ ok: boolean }>('/api/telegram/test', { method: 'POST' }),
+
+  setAlert: (price: number, symbol?: string) =>
+    request<{ alert: { symbol: string; price: number; direction: 'above' | 'below' } }>('/api/alert', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ price }),
+      body: JSON.stringify({ price, symbol }),
     }),
 
   clearAlert: () => request<{ ok: boolean }>('/api/alert', { method: 'DELETE' }),
 
-  intent: (text: string) =>
+  intent: (text: string, symbol?: string) =>
     request<VoiceResponse>('/api/intent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, symbol }),
     }),
 
-  voice: (pcm: Uint8Array) =>
-    request<VoiceResponse>('/api/voice', {
+  voice: (pcm: Uint8Array, symbol?: string) =>
+    request<VoiceResponse>(`/api/voice${symbol ? `?symbol=${encodeURIComponent(symbol)}` : ''}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream' },
       body: pcm as unknown as BodyInit,
     }),
 
-  previewCloseHalf: () =>
+  previewCloseHalf: (symbol?: string) =>
     request<{ preview: OrderPreviewView }>('/api/orders/preview', {
       method: 'POST',
-      headers: orderAuth(),
+      headers: { 'Content-Type': 'application/json', ...orderAuth() },
+      body: JSON.stringify({ symbol }),
     }),
 
   executeCloseHalf: (id: string) =>

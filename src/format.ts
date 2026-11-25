@@ -32,6 +32,8 @@ export function modeLabel(mode: string): string {
   switch (mode) {
     case 'binance-testnet':
       return 'BINANCE TESTNET'
+    case 'binance-mainnet':
+      return 'BINANCE MAINNET'
     case 'okx-demo':
       return 'OKX DEMO'
     case 'mock':

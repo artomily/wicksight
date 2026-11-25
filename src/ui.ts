@@ -59,6 +59,14 @@ interface PositionTexts {
   hintBrightness?: number
 }
 
+export interface HudContext {
+  /** "3 positions · riskiest SOL ~6m" from the server. */
+  header?: string
+  /** 1-based selection among open positions. */
+  index?: number
+  count?: number
+}
+
 function clock(ts: number): string {
   return new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 }
@@ -70,6 +78,7 @@ export function positionTexts(
   pausedUntil?: number | null,
   stale = false,
   eta: LiqEtaView | null = null,
+  hud: HudContext = {},
 ): PositionTexts {
   if (!position) {
     if (pausedUntil) {
@@ -87,6 +96,8 @@ export function positionTexts(
   }
 
   const label = modeLabel(position.mode)
+  const multi = (hud.count ?? 1) > 1
+  const count = multi && hud.index ? ` · ${hud.index}/${hud.count}` : ''
   const status = pausedUntil
     ? `○ RATE LIMITED · ${clock(pausedUntil)}`
     : offline
@@ -94,8 +105,10 @@ export function positionTexts(
       : stale
         ? `○ ${label} · STALE`
         : alertPrice
-          ? `● ${label} · ALERT ${fmtPrice(alertPrice, 0)}`
-          : `● ${label} · ${position.leverage}x`
+          ? `● ${label} · ALERT ${fmtPrice(alertPrice, 0)}${count}`
+          : multi && hud.header
+            ? `● ${hud.header}`
+            : `● ${label} · ${position.leverage}x`
 
   if (!position.hasPosition || !position.side) {
     return {
@@ -112,7 +125,7 @@ export function positionTexts(
     : 'Liq n/a'
   const away = position.distanceToLiqPct !== null ? ` · ${position.distanceToLiqPct.toFixed(1)}% away` : ''
   const etaLine = eta
-    ? `LIQ IN ${formatEta(eta.minutes)} at this pace · buffer ${eta.bufferPct.toFixed(1)}%`
+    ? `LIQ IN ${formatEta(eta.minutes)} at this pace · buffer ${eta.bufferPct.toFixed(1)}%${count}`
     : null
 
   return {
@@ -122,7 +135,7 @@ export function positionTexts(
       `PnL ${pnl} · ROE ${roe}`,
       `${liq}${away}`,
     ].join('\n\n'),
-    hint: etaLine ?? 'Hold: speak · 2x exit',
+    hint: etaLine ?? (multi ? `Swipe/tap: cycle${count}` : 'Hold: speak · 2x exit'),
     hintBrightness: eta && eta.minutes <= 5 ? 4 : 2,
   }
 }
@@ -134,8 +147,9 @@ export function positionPage(
   pausedUntil?: number | null,
   stale = false,
   eta: LiqEtaView | null = null,
+  hud: HudContext = {},
 ): PageSpec {
-  const t = positionTexts(position, alertPrice, offline, pausedUntil, stale, eta)
+  const t = positionTexts(position, alertPrice, offline, pausedUntil, stale, eta, hud)
   return {
     texts: [
       captureLayer(true),

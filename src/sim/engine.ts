@@ -248,24 +248,26 @@ export class MarketSimulator {
 
   private nextPrice(at: number, dtSec: number): number {
     const age = (at - this.scenarioStart) / 1_000
+    // Scenarios are expressed as a fraction of the entry price so a 152 USDT
+    // SOL book and a 63,000 USDT BTC book move at the same pace.
+    const unit = this.entry || this.mark
     let drift = 0
-    let vol = 1.2
+    let vol = unit * 0.000025
     switch (this.scenario) {
       case 'calm':
         drift = 0
-        vol = 1.2
         break
       case 'dump':
-        drift = -12
-        vol = 1.5
+        drift = -unit * 0.0002
+        vol = unit * 0.000032
         break
       case 'recovery':
-        drift = 12
-        vol = 1.5
+        drift = unit * 0.0002
+        vol = unit * 0.000032
         break
       case 'wick':
-        drift = age < 10 ? -60 : age < 20 ? 60 : 0
-        vol = 3
+        drift = age < 10 ? -unit * 0.001 : age < 20 ? unit * 0.001 : 0
+        vol = unit * 0.00006
         break
     }
     const noise = (this.rng() * 2 - 1) * vol

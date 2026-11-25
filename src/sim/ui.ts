@@ -2,6 +2,9 @@ import { parseIntent } from '../../server/intents.ts'
 import { alertHitPage, confirmPage, positionPage, resultPage, type PageSpec } from '../ui.ts'
 import { fmtPrice, fmtQty, formatEta } from '../format.ts'
 import { MarketSimulator, type Scenario, type Speed } from './engine.ts'
+import { rankByRisk, riskHeader } from '../../shared/risk.ts'
+import type { LiqEta } from '../../server/eta.ts'
+import type { PositionSnapshot, Side } from '../../server/exchange/types.ts'
 import { pageHtml, receiptLine } from './render.ts'
 import type { CloseReceipt } from '../../server/receipt.ts'
 import type { OrderFill, OrderPreview } from '../../server/exchange/types.ts'
@@ -16,6 +19,22 @@ const SCENARIOS: Array<{ id: Scenario; label: string }> = [
   { id: 'recovery', label: 'Recovery' },
 ]
 const SPEEDS: Speed[] = [1, 5, 20]
+
+interface SimBookConfig {
+  symbol: string
+  side: Side
+  size: number
+  leverage: number
+  entry: number
+}
+
+const BOOKS: SimBookConfig[] = [
+  { symbol: 'BTCUSDT', side: 'LONG', size: 0.01, leverage: 20, entry: 63_120 },
+  { symbol: 'ETHUSDT', side: 'LONG', size: 0.2, leverage: 10, entry: 3_150 },
+  { symbol: 'SOLUSDT', side: 'LONG', size: 4, leverage: 25, entry: 152 },
+]
+
+type SimEntry = { position: PositionSnapshot; eta: LiqEta | null }
 
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 
@@ -37,10 +56,10 @@ export function mountSimulator(root: HTMLElement): void {
   root.innerHTML = `
     <div class="section-head">
       <span class="eyebrow">SIMULATOR · LIVE IN YOUR BROWSER</span>
-      <h2>Play the position.</h2>
+      <h2>Play the book.</h2>
       <p>
-        A synthetic BTCUSDT tape, your position, and the real HUD/ETA/receipt logic.
-        Nothing leaves this tab: no keys, no exchange calls, no orders.
+        A synthetic BTC/ETH/SOL tape, three positions ranked by risk, and the real
+        HUD/ETA/receipt logic. Nothing leaves this tab: no keys, no calls, no orders.
       </p>
       <div class="bar"></div>
     </div>
@@ -92,22 +111,27 @@ export function mountSimulator(root: HTMLElement): void {
         </div>
 
         <div class="sim-group">
-          <h3>Position</h3>
+          <h3>Position <span class="sim-selected" id="sim-selected">SOL</span></h3>
           <div class="sim-form">
+            <label>Symbol
+              <select id="sim-symbol">
+                ${BOOKS.map((book) => `<option value="${book.symbol}">${book.symbol}</option>`).join('')}
+              </select>
+            </label>
             <label>Side
               <select id="sim-side">
                 <option value="LONG">Long</option>
                 <option value="SHORT">Short</option>
               </select>
             </label>
-            <label>Size (BTC)
+            <label>Size
               <input id="sim-size" type="number" min="0.001" max="10" step="0.001" value="0.01" />
             </label>
             <label>Leverage <span id="sim-lev-label">20x</span>
               <input id="sim-leverage" type="range" min="5" max="50" step="1" value="20" />
             </label>
             <label>Entry (USDT)
-              <input id="sim-entry" type="number" min="1000" max="500000" step="0.1" value="61492.9" />
+              <input id="sim-entry" type="number" min="0.01" max="500000" step="0.1" value="61492.9" />
             </label>
             <button class="btn" id="sim-apply" type="button">Apply position</button>
           </div>
@@ -147,11 +171,24 @@ export function mountSimulator(root: HTMLElement): void {
   const tourStep = $<HTMLSpanElement>('sim-tour-step')
   const tourText = $<HTMLSpanElement>('sim-tour-text')
 
-  const sim = new MarketSimulator({ side: 'LONG', size: 0.01, leverage: 20, entry: 61_492.9, seed: 0x51a7 })
+  const sims = BOOKS.map(
+    (book, index) =>
+      new MarketSimulator({
+        side: book.side,
+        size: book.size,
+        leverage: book.leverage,
+        entry: book.entry,
+        symbol: book.symbol,
+        seed: 0x51a7 + index * 17,
+      }),
+  )
+  let selectedSymbol = BOOKS.find((book) => book.symbol === 'SOLUSDT')?.symbol ?? BOOKS[0]!.symbol
+  const sim = () => sims.find((entry) => entry.symbol === selectedSymbol) ?? sims[0]!
   let screen: Screen = 'position'
   let selected: Selected = 'no'
   let alertPrice: number | null = null
   let alertAbove = false
+  let alertSymbol: string | null = null
   let preview: OrderPreview | null = null
   let fill: OrderFill | null = null
   let receipt: CloseReceipt | null = null
@@ -162,11 +199,53 @@ export function mountSimulator(root: HTMLElement): void {
     side: (($<HTMLSelectElement>('sim-side').value === 'SHORT' ? 'SHORT' : 'LONG') as 'LONG' | 'SHORT'),
     size: Math.max(0.001, Number($<HTMLInputElement>('sim-size').value) || 0.01),
     leverage: Math.min(50, Math.max(5, Number($<HTMLInputElement>('sim-leverage').value) || 20)),
-    entry: Math.max(1000, Number($<HTMLInputElement>('sim-entry').value) || 61_492.9),
+    entry: Math.max(0.01, Number($<HTMLInputElement>('sim-entry').value) || 61_492.9),
   })
 
   const setFeedback = (text: string) => {
     feedback.textContent = text
+  }
+
+  const rankedNow = (): SimEntry[] =>
+    rankByRisk<SimEntry>(
+      sims.map((entry) => {
+        const state = entry.snapshot()
+        return { position: state.position, eta: state.eta }
+      }),
+    )
+
+  const selectedEntry = () => {
+    const ranked = rankedNow()
+    return ranked.find((entry) => entry.position.symbol === selectedSymbol) ?? ranked[0] ?? null
+  }
+
+  const openEntries = () => rankedNow().filter((entry) => entry.position.hasPosition)
+
+  const syncForm = () => {
+    const p = sim().snapshot().position
+    $<HTMLSelectElement>('sim-symbol').value = selectedSymbol
+    $<HTMLSelectElement>('sim-side').value = p.side === 'SHORT' ? 'SHORT' : 'LONG'
+    $<HTMLInputElement>('sim-size').value = String(p.qty || 0.01)
+    $<HTMLInputElement>('sim-leverage').value = String(p.leverage || 20)
+    $('sim-lev-label').textContent = `${p.leverage || 20}x`
+    $<HTMLInputElement>('sim-entry').value = String(p.entryPrice || 0)
+    $('sim-selected').textContent = selectedSymbol.replace(/USDT$/, '')
+  }
+
+  const selectSymbol = (symbol: string) => {
+    if (!sims.some((entry) => entry.symbol === symbol)) return
+    selectedSymbol = symbol
+    alertPrice = null
+    syncForm()
+    render()
+  }
+
+  const cycle = (delta: number) => {
+    const open = openEntries()
+    if (open.length < 2) return
+    const at = Math.max(0, open.findIndex((entry) => entry.position.symbol === selectedSymbol))
+    const next = open[(at + delta + open.length) % open.length]
+    if (next) selectSymbol(next.position.symbol)
   }
 
   const setTour = (step: string, text: string) => {
@@ -180,24 +259,38 @@ export function mountSimulator(root: HTMLElement): void {
   }
 
   const drawHud = () => {
-    const state = sim.snapshot()
+    const ranked = rankedNow()
+    const chosen = selectedEntry()
+    const open = ranked.filter((entry) => entry.position.hasPosition)
+    const index = chosen ? open.findIndex((entry) => entry.position.symbol === chosen.position.symbol) + 1 : 0
+    const state = sim().snapshot()
+    const alertFor = alertPrice !== null && alertSymbol === chosen?.position.symbol ? alertPrice : null
     let page: PageSpec
     if (screen === 'confirm' && preview) {
       page = confirmPage(preview, selected)
     } else if (screen === 'alert') {
-      const distance = state.position.distanceToLiqPct
-      page = alertHitPage(state.markPrice, distance, state.position.symbol)
+      const p = chosen?.position
+      page = alertHitPage(p?.markPrice ?? 0, p?.distanceToLiqPct ?? null, p?.symbol ?? '')
     } else if (screen === 'filled' && receipt && fill) {
       const main = `Closed half\n\n${receiptLine(receipt)}\n\nSold ${fmtQty(fill.executedQty)} ${state.position.symbol} @ ${fmtPrice(fill.avgPrice, 1)}`
       page = resultPage('● FILLED', main, 'Tap to continue', 4)
     } else {
-      page = positionPage(state.position, alertPrice, false, null, false, state.eta)
+      page = positionPage(
+        chosen?.position ?? state.position,
+        alertFor,
+        false,
+        null,
+        false,
+        chosen?.eta ?? null,
+        { header: riskHeader(ranked), index, count: open.length },
+      )
     }
     hud.innerHTML = pageHtml(page)
-    $('sim-mark').textContent = fmtPrice(state.markPrice, 1)
-    $('sim-liq').textContent = state.position.liqPrice ? fmtPrice(state.position.liqPrice, 1) : '—'
-    $('sim-eta').textContent = state.eta ? `${formatEta(state.eta.minutes)} · ${state.eta.bufferPct.toFixed(1)}%` : 'hidden'
+    $('sim-mark').textContent = fmtPrice(chosen?.position.markPrice ?? state.markPrice, 1)
+    $('sim-liq').textContent = chosen?.position.liqPrice ? fmtPrice(chosen.position.liqPrice, 1) : '—'
+    $('sim-eta').textContent = chosen?.eta ? `${formatEta(chosen.eta.minutes)} · ${chosen.eta.bufferPct.toFixed(1)}%` : 'hidden'
     $('sim-samples').textContent = String(state.samples)
+    $('sim-selected').textContent = selectedSymbol.replace(/USDT$/, '')
   }
 
   const drawActions = () => {
@@ -220,25 +313,28 @@ export function mountSimulator(root: HTMLElement): void {
     }
     actions.innerHTML =
       button('Close half', 'close', true) +
+      button('Cycle', 'cycle') +
       (alertPrice !== null ? button('Clear alert', 'clear-alert') : '')
   }
 
   const render = () => {
     drawHud()
     drawActions()
-    toggle.textContent = sim.isRunning ? 'Pause' : 'Start'
+    toggle.textContent = sims.some((entry) => entry.isRunning) ? 'Pause' : 'Start'
     for (const el of root.querySelectorAll<HTMLElement>('[data-scenario]')) {
-      el.classList.toggle('active', el.dataset.scenario === sim.currentScenario)
+      el.classList.toggle('active', el.dataset.scenario === sims[0]!.currentScenario)
     }
     for (const el of root.querySelectorAll<HTMLElement>('[data-speed]')) {
-      el.classList.toggle('active', Number(el.dataset.speed) === sim.currentSpeed)
+      el.classList.toggle('active', Number(el.dataset.speed) === sims[0]!.currentSpeed)
     }
   }
 
   const resetSim = () => {
     stopTour()
-    const form = readForm()
-    sim.reset(form)
+    for (const entry of sims) entry.reset()
+    const riskiest = rankedNow().find((entry) => entry.position.hasPosition)
+    selectedSymbol = riskiest?.position.symbol ?? sims[0]!.symbol
+    syncForm()
     screen = 'position'
     selected = 'no'
     alertPrice = null
@@ -251,16 +347,16 @@ export function mountSimulator(root: HTMLElement): void {
 
   const applyPosition = () => {
     const form = readForm()
-    sim.setPosition(form)
+    sim().setPosition(form)
     screen = 'position'
     alertPrice = null
     preview = null
-    setFeedback(`Position set: ${form.side} ${form.size} BTC · ${form.leverage}x · entry ${fmtPrice(form.entry, 1)}`)
+    setFeedback(`Position set: ${form.side} ${form.size} ${selectedSymbol} · ${form.leverage}x · entry ${fmtPrice(form.entry, 1)}`)
     render()
   }
 
   const armAlert = (price: number) => {
-    const mark = sim.snapshot().markPrice
+    const mark = sim().snapshot().markPrice
     if (!Number.isFinite(price) || price <= 0) {
       setFeedback('That alert price is not valid.')
       return
@@ -271,18 +367,20 @@ export function mountSimulator(root: HTMLElement): void {
     }
     alertPrice = price
     alertAbove = price >= mark
+    alertSymbol = selectedSymbol
     screen = 'position'
     setFeedback(`Alert armed at ${fmtPrice(price, 0)} · ${alertAbove ? 'fires above' : 'fires below'} · while the app is open`)
     render()
   }
 
   const openConfirm = () => {
-    if (!sim.snapshot().position.hasPosition) {
+    if (!sim().snapshot().position.hasPosition) {
       setFeedback('No position to close.')
       return
     }
-    preview = sim.previewCloseHalf()
-    if (preview.qty <= 0) {
+    const next = sim().previewCloseHalf()
+    preview = next
+    if (next.qty <= 0) {
       setFeedback('Position is too small to close half at the 0.001 BTC step.')
       return
     }
@@ -294,12 +392,12 @@ export function mountSimulator(root: HTMLElement): void {
 
   const execute = () => {
     if (selected !== 'yes' || !preview) return
-    const result = sim.closeHalf()
+    const result = sim().closeHalf()
     fill = result.fill
     receipt = result.receipt
     preview = null
     screen = 'filled'
-    sim.pause()
+    sim().pause()
     setFeedback('Simulated reduce-only fill. The receipt proves the buffer moved; nothing was sent.')
     render()
   }
@@ -312,7 +410,7 @@ export function mountSimulator(root: HTMLElement): void {
 
   const continueFromFill = () => {
     screen = 'position'
-    setFeedback(`Left ${fmtQty(sim.snapshot().position.qty)} BTCUSDT. The risk moved.`)
+    setFeedback(`Left ${fmtQty(sim().snapshot().position.qty)} ${selectedSymbol}. The risk moved.`)
     render()
   }
 
@@ -323,24 +421,26 @@ export function mountSimulator(root: HTMLElement): void {
 
   const startTour = async () => {
     const token = ++tourToken
+    selectedSymbol = sims.find((entry) => entry.symbol === 'SOLUSDT')?.symbol ?? selectedSymbol
+    syncForm()
     applyPosition()
-    sim.setScenario('dump')
-    sim.setSpeed(20)
-    sim.start()
+    sim().setScenario('dump')
+    sim().setSpeed(20)
+    sim().start()
     render()
     setTour('1/4', 'Dump scenario · watch the buffer shrink')
     await wait(2200)
     if (token !== tourToken) return
     for (let i = 0; i < 40; i++) {
       if (token !== tourToken) return
-      if (sim.snapshot().eta) break
+      if (sim().snapshot().eta) break
       await wait(150)
     }
     // Freeze the tape at the ETA so the demo shows the action improving risk,
     // instead of racing the liquidation line during the explanation.
-    sim.pause()
+    sim().pause()
     render()
-    setTour('2/4', sim.snapshot().eta ? 'ETA appears: LIQ IN ~Xm at this pace' : 'Waiting for a clean three-minute tape…')
+    setTour('2/4', sim().snapshot().eta ? 'ETA appears: LIQ IN ~Xm at this pace' : 'Waiting for a clean three-minute tape…')
     await wait(3800)
     if (token !== tourToken) return
     openConfirm()
@@ -368,7 +468,7 @@ export function mountSimulator(root: HTMLElement): void {
       resetSim()
       return
     }
-    const intent = parseIntent(text, sim.snapshot().markPrice)
+    const intent = parseIntent(text, sim().snapshot().markPrice)
     switch (intent.type) {
       case 'alert':
         armAlert(intent.price)
@@ -399,7 +499,7 @@ export function mountSimulator(root: HTMLElement): void {
     if (target && /^(INPUT|SELECT|TEXTAREA)$/.test(target.tagName)) return
     if (event.key === ' ') {
       event.preventDefault()
-      sim.toggle()
+      sim().toggle()
       render()
       return
     }
@@ -409,6 +509,14 @@ export function mountSimulator(root: HTMLElement): void {
     }
     if (event.key.toLowerCase() === 'r') {
       resetSim()
+      return
+    }
+    if (event.key === 'ArrowUp') {
+      cycle(-1)
+      return
+    }
+    if (event.key === 'ArrowDown') {
+      cycle(1)
       return
     }
     if (screen === 'confirm') {
@@ -432,14 +540,14 @@ export function mountSimulator(root: HTMLElement): void {
   // Controls
   for (const el of root.querySelectorAll<HTMLButtonElement>('[data-scenario]')) {
     el.addEventListener('click', () => {
-      sim.setScenario(el.dataset.scenario as Scenario)
+      for (const entry of sims) entry.setScenario(el.dataset.scenario as Scenario)
       setFeedback(`Scenario: ${el.textContent}. Start or resume the tape.`)
       render()
     })
   }
   for (const el of root.querySelectorAll<HTMLButtonElement>('[data-speed]')) {
     el.addEventListener('click', () => {
-      sim.setSpeed(Number(el.dataset.speed) as Speed)
+      for (const entry of sims) entry.setSpeed(Number(el.dataset.speed) as Speed)
       setFeedback(`Speed: ${el.dataset.speed}x simulated time.`)
       render()
     })
@@ -447,11 +555,19 @@ export function mountSimulator(root: HTMLElement): void {
   $<HTMLInputElement>('sim-leverage').addEventListener('input', (event) => {
     $('sim-lev-label').textContent = `${(event.target as HTMLInputElement).value}x`
   })
+  $<HTMLSelectElement>('sim-symbol').addEventListener('change', (event) => {
+    selectSymbol((event.target as HTMLSelectElement).value)
+    setFeedback(`Editing ${selectedSymbol}. The other positions keep running.`)
+  })
   $('sim-apply').addEventListener('click', applyPosition)
   $('sim-reset').addEventListener('click', resetSim)
   toggle.addEventListener('click', () => {
-    sim.toggle()
-    setFeedback(sim.isRunning ? 'Tape running.' : 'Tape paused.')
+    const running = sims.some((entry) => entry.isRunning)
+    for (const entry of sims) {
+      if (running) entry.pause()
+      else entry.start()
+    }
+    setFeedback(running ? 'Tape paused.' : 'Tape running.')
     render()
   })
   $('sim-tour-start').addEventListener('click', () => void startTour())
@@ -506,6 +622,11 @@ export function mountSimulator(root: HTMLElement): void {
       case 'close':
         openConfirm()
         break
+      case 'cycle':
+        cycle(1)
+        setFeedback(`Showing ${selectedSymbol} · ${openEntries().length} open positions.`)
+        render()
+        break
       case 'clear-alert':
         alertPrice = null
         setFeedback('Alert cleared. Nothing was sent.')
@@ -550,15 +671,15 @@ export function mountSimulator(root: HTMLElement): void {
   // Alert crossing and live HUD.
   window.setInterval(() => {
     const now = performance.now()
-    sim.tick(now - last)
+    for (const entry of sims) entry.tick(now - last)
     last = now
-    const state = sim.snapshot()
-    if (alertPrice !== null) {
+    const state = sim().snapshot()
+    if (alertPrice !== null && alertSymbol === selectedSymbol) {
       const hit = alertAbove ? state.markPrice >= alertPrice : state.markPrice <= alertPrice
       if (hit) {
         alertPrice = null
         screen = 'alert'
-        sim.pause()
+        sim().pause()
         setFeedback('Alert hit. The alert is display-only; nothing was sent.')
       }
     }
@@ -567,12 +688,17 @@ export function mountSimulator(root: HTMLElement): void {
 
   window.addEventListener('resize', fit)
   fit()
+  syncForm()
   render()
   setFeedback('Simulation ready. Pick a scenario and press Start.')
 
   // Expose a tiny handle for screenshots/automation in local reviews.
   ;(window as unknown as { __wicksightSimulator?: unknown }).__wicksightSimulator = {
-    sim,
+    sims,
+    sim: () => sim(),
+    selectedSymbol: () => selectedSymbol,
+    selectSymbol,
+    cycle,
     applyPosition,
     startTour,
     openConfirm,

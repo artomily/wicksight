@@ -7,7 +7,7 @@ import {
   waitForEvenAppBridge,
   type EvenAppBridge,
 } from '@evenrealities/even_hub_sdk'
-import type { OrderPreviewView, StateResponse, VoiceResponse } from '../shared/types'
+import type { OrderPreviewView, PositionEntryView, StateResponse, VoiceResponse } from '../shared/types'
 import { ApiError, api } from './api'
 import { VoiceRecorder } from './audio'
 import { compact, ellipsis, fmtPrice, fmtQty } from './format'
@@ -30,6 +30,8 @@ type Screen =
 
 let screen: Screen = { kind: 'boot' }
 let lastState: StateResponse | null = null
+/** The position the HUD is showing; null means the riskiest one. */
+let selectedSymbol: string | null = null
 let offline = false
 let pausedUntil: number | null = null
 let stale = false
@@ -113,9 +115,57 @@ async function upgradeText(container: TextContainerProperty): Promise<void> {
   lastTexts.set(id, content)
 }
 
+function entries(): PositionEntryView[] {
+  return lastState?.positions ?? []
+}
+
+function selectedEntry(): PositionEntryView | null {
+  const list = entries()
+  if (!list.length) return null
+  const chosen = selectedSymbol ? list.find((entry) => entry.position.symbol === selectedSymbol) : null
+  return chosen ?? list.find((entry) => entry.position.hasPosition) ?? list[0] ?? null
+}
+
+function selectedIndex(): number {
+  const open = entries().filter((entry) => entry.position.hasPosition)
+  const chosen = selectedEntry()
+  const index = chosen ? open.findIndex((entry) => entry.position.symbol === chosen.position.symbol) : -1
+  return index >= 0 ? index + 1 : 0
+}
+
 function alertPrice(): number | null {
   const alert = lastState?.alert
-  return alert && !alert.triggeredAt ? alert.price : null
+  const chosen = selectedEntry()
+  if (!alert || alert.triggeredAt) return null
+  if (chosen && alert.symbol !== chosen.position.symbol) return null
+  return alert.price
+}
+
+function positionPageSpec(): ui.PageSpec {
+  const chosen = selectedEntry()
+  const open = entries().filter((entry) => entry.position.hasPosition)
+  return ui.positionPage(
+    chosen?.position ?? lastState?.position ?? null,
+    alertPrice(),
+    offline,
+    pausedUntil,
+    stale,
+    chosen?.eta ?? null,
+    { header: lastState?.header, index: selectedIndex(), count: open.length },
+  )
+}
+
+function cyclePosition(delta: number): void {
+  const open = entries().filter((entry) => entry.position.hasPosition)
+  if (open.length < 2) {
+    if (screen.kind === 'position') void pollNow()
+    return
+  }
+  const chosen = selectedEntry()?.position.symbol
+  const at = Math.max(0, open.findIndex((entry) => entry.position.symbol === chosen))
+  const next = open[(at + delta + open.length) % open.length]
+  selectedSymbol = next.position.symbol
+  if (screen.kind === 'position') void show({ kind: 'position' })
 }
 
 function specFor(next: Screen): ui.PageSpec {
@@ -123,7 +173,7 @@ function specFor(next: Screen): ui.PageSpec {
     case 'boot':
       return ui.bootPage()
     case 'position':
-      return ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil, stale, lastState?.eta ?? null)
+      return positionPageSpec()
     case 'listening':
       return ui.listeningPage()
     case 'thinking':
@@ -133,7 +183,8 @@ function specFor(next: Screen): ui.PageSpec {
     case 'result':
       return ui.resultPage(next.status, next.main, next.hint, next.brightness)
     case 'alertHit': {
-      const p = lastState?.position
+      const alertSymbol = lastState?.alert?.symbol
+      const p = entries().find((entry) => entry.position.symbol === alertSymbol)?.position ?? lastState?.position
       return ui.alertHitPage(p?.markPrice ?? 0, p?.distanceToLiqPct ?? null, p?.symbol ?? '')
     }
   }
@@ -145,7 +196,7 @@ async function show(next: Screen): Promise<void> {
   screen = next
   await enqueue(async () => {
     if (next.kind === 'position' && previous.kind === 'position' && created) {
-      const spec = ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil, stale, lastState?.eta ?? null)
+      const spec = positionPageSpec()
       for (const container of spec.texts) await upgradeText(container)
       return
     }
@@ -157,13 +208,14 @@ async function patchPosition(): Promise<void> {
   await enqueue(async () => {
     if (!created) return
     if (screen.kind === 'alertHit') {
-      const p = lastState?.position
+      const alertSymbol = lastState?.alert?.symbol
+      const p = entries().find((entry) => entry.position.symbol === alertSymbol)?.position ?? lastState?.position
       const spec = ui.alertHitPage(p?.markPrice ?? 0, p?.distanceToLiqPct ?? null, p?.symbol ?? '')
       for (const container of spec.texts) await upgradeText(container)
       return
     }
     if (screen.kind !== 'position') return
-    const spec = ui.positionPage(lastState?.position ?? null, alertPrice(), offline, pausedUntil, stale, lastState?.eta ?? null)
+    const spec = positionPageSpec()
     for (const container of spec.texts) await upgradeText(container)
   })
 }
@@ -184,6 +236,9 @@ async function pollNow(): Promise<void> {
   try {
     const state = await api.state()
     lastState = state
+    if (selectedSymbol && !state.positions.some((entry) => entry.position.symbol === selectedSymbol && entry.position.hasPosition)) {
+      selectedSymbol = null
+    }
     offline = false
     pausedUntil = state.meta.pausedUntil ?? null
     stale = state.meta.stale === true
@@ -200,6 +255,7 @@ async function pollNow(): Promise<void> {
     // in-flight order. The alert shows as soon as the user is back on the HUD.
     const idleScreen = screen.kind === 'position' || screen.kind === 'result'
     if (state.alert?.triggeredAt && idleScreen) {
+      selectedSymbol = state.alert.symbol
       await show({ kind: 'alertHit' })
     }
   } catch (err) {
@@ -292,7 +348,7 @@ async function finishListening(): Promise<void> {
   await show({ kind: 'thinking', message: 'Transcribing' })
 
   try {
-    const voice = await api.voice(pcm)
+    const voice = await api.voice(pcm, selectedEntry()?.position.symbol)
     await handleVoice(voice)
   } catch (err) {
     showResult('● ERROR', `Voice failed\n\n${compact((err as Error).message)}`, 'Tap to return', 6000)
@@ -304,7 +360,7 @@ async function handleVoice(voice: VoiceResponse): Promise<void> {
 
   if (intent.type === 'alert') {
     try {
-      const { alert } = await api.setAlert(intent.price)
+      const { alert } = await api.setAlert(intent.price, selectedEntry()?.position.symbol)
       const direction = alert.direction === 'above' ? 'Fires above' : 'Fires below'
       showResult(
         '● ALERT ARMED',
@@ -334,7 +390,7 @@ async function handleVoice(voice: VoiceResponse): Promise<void> {
   if (intent.type === 'close_half') {
     await show({ kind: 'thinking', message: 'Checking position' })
     try {
-      const { preview } = await api.previewCloseHalf()
+      const { preview } = await api.previewCloseHalf(selectedEntry()?.position.symbol)
       await show({ kind: 'confirm', preview, selected: 'no' })
     } catch (err) {
       showResult('● CANNOT CLOSE', `Nothing to close\n\n${compact((err as Error).message)}`, 'Tap to return', 6000)
@@ -350,7 +406,17 @@ async function executeOrder(preview: OrderPreviewView): Promise<void> {
   await show({ kind: 'thinking', message: 'Sending testnet order' })
   try {
     const result = await api.executeCloseHalf(preview.id)
-    lastState = lastState ? { ...lastState, position: result.position } : lastState
+    lastState = lastState
+      ? {
+          ...lastState,
+          position: result.position,
+          positions: lastState.positions.map((entry) =>
+            entry.position.symbol === result.position.symbol
+              ? { ...entry, position: result.position }
+              : entry,
+          ),
+        }
+      : lastState
     const action = result.fill.side === 'LONG' ? 'Sold' : 'Bought'
     const left =
       result.position.qty > 0
@@ -391,7 +457,7 @@ function optionalPct(value: number | null): string {
 function onTextClick() {
   switch (screen.kind) {
     case 'position':
-      void pollNow()
+      cyclePosition(1)
       break
     case 'alertHit':
       void dismissAlert()
@@ -518,7 +584,7 @@ if (import.meta.env.DEV) {
   const demo = new URLSearchParams(location.search).get('demo')
   try {
     if (demo === 'confirm') {
-      const { preview } = await api.previewCloseHalf()
+      const { preview } = await api.previewCloseHalf(selectedEntry()?.position.symbol)
       await show({ kind: 'confirm', preview, selected: 'no' })
     } else if (demo === 'listening') {
       await show({ kind: 'listening' })
