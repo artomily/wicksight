@@ -53,6 +53,15 @@ test('a dump produces an ETA after a three-minute window, a flat tape does not',
   assert.equal(calm.snapshot().eta, null, 'a calm/flat tape must hide the ETA')
 })
 
+test('close half floors to the 0.001 BTC step and refuses a dust position', () => {
+  const dust = new MarketSimulator({ side: 'LONG', size: 0.001, leverage: 20, entry: ENTRY, seed: 13 })
+  assert.equal(dust.previewCloseHalf().qty, 0)
+
+  const sim = new MarketSimulator({ side: 'LONG', size: 0.003, leverage: 20, entry: ENTRY, seed: 14 })
+  assert.equal(sim.previewCloseHalf().qty, 0.001)
+  assert.equal(sim.previewCloseHalf().remaining, 0.002)
+})
+
 test('speed controls simulated time, reset restores the entered position', () => {
   const sim = new MarketSimulator({ side: 'SHORT', size: 0.02, leverage: 10, entry: 60_000, seed: 3 })
   sim.setSpeed(20)

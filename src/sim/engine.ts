@@ -1,6 +1,7 @@
 import { computeLiqEta, MarkHistory, type LiqEta } from '../../server/eta.ts'
 import { applyMark } from '../../server/recompute.ts'
 import { buildCloseReceipt, type CloseReceipt } from '../../server/receipt.ts'
+import { floorToStep } from '../../server/exchange/types.ts'
 import type { OrderFill, OrderPreview, PositionSnapshot, Side } from '../../server/exchange/types.ts'
 
 export type Scenario = 'calm' | 'dump' | 'wick' | 'recovery'
@@ -201,7 +202,7 @@ export class MarketSimulator {
   /** Close half at the current mark; the remaining isolated margin keeps the realized PnL. */
   closeHalf(): SimFill {
     const before = this.position ?? this.snapshotAt(this.mark)
-    const closed = before.qty / 2
+    const closed = floorToStep(before.qty / 2, '0.001')
     const fillPrice = this.mark
     const realized = before.side === 'LONG' ? (fillPrice - before.entryPrice) * closed : (before.entryPrice - fillPrice) * closed
     this.qty = Math.max(0, before.qty - closed)
@@ -233,12 +234,13 @@ export class MarketSimulator {
 
   previewCloseHalf(): OrderPreview {
     const position = this.position ?? this.snapshotAt(this.mark)
+    const half = floorToStep(position.qty / 2, '0.001')
     return {
       id: `sim-preview-${Math.round(this.simNow)}`,
       symbol: this.symbol,
       side: position.side ?? this.side,
-      qty: position.qty / 2,
-      remaining: Math.max(0, position.qty - position.qty / 2),
+      qty: half,
+      remaining: Math.max(0, position.qty - half),
       qtyDecimals: 3,
       createdAt: this.simNow,
     }

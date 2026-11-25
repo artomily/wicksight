@@ -282,6 +282,10 @@ export function mountSimulator(root: HTMLElement): void {
       return
     }
     preview = sim.previewCloseHalf()
+    if (preview.qty <= 0) {
+      setFeedback('Position is too small to close half at the 0.001 BTC step.')
+      return
+    }
     selected = 'no'
     screen = 'confirm'
     setFeedback('Close half? The default is No. Swipe to Yes, then tap.')
