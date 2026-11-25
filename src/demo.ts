@@ -1,6 +1,7 @@
 import './demo.css'
 import { parseIntent } from '../server/intents.ts'
 import { voxelLensSvg } from './voxel'
+import { mountSimulator } from './sim/ui.ts'
 
 const MARK = 61_486.88
 const ENTRY = 61_492.88
@@ -318,7 +319,8 @@ const shell = (): string => `
     <header class="nav">
       <a class="brand" href="#"><img src="/favicon.svg" alt="" /><span>WICKSIGHT</span></a>
       <nav class="nav-links">
-        <a href="#try">Try it</a>
+        <a href="#simulator">Simulator</a>
+        <a href="#try">Replay</a>
         <a href="#features">Features</a>
         <a href="#how">How it works</a>
         <a href="#safety">Safety</a>
@@ -339,8 +341,9 @@ const shell = (): string => `
           glasses, on Binance Futures <strong>testnet</strong>.
         </p>
         <div class="hero-actions">
-          <a class="btn primary" href="#try">Try the live demo <span>→</span></a>
-          <a class="btn" href="https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-final.mp4" target="_blank" rel="noreferrer">Watch the 60s demo <span>↗</span></a>
+          <a class="btn primary" href="#simulator">Play the simulator <span>→</span></a>
+          <a class="btn" href="#try">Watch the replay</a>
+          <a class="btn" href="https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-final.mp4" target="_blank" rel="noreferrer">60s demo <span>↗</span></a>
         </div>
         <div class="hero-stats">
           <div class="stat"><span class="stat-value">4.6%</span><span class="stat-label">buffer at entry</span></div>
@@ -420,6 +423,10 @@ const shell = (): string => `
         values from Binance. <a href="https://github.com/artomily/wicksight" target="_blank" rel="noreferrer">Source on GitHub</a>
         · <a href="https://github.com/artomily/wicksight/releases/download/v1.0.0/wicksight-final.mp4" target="_blank" rel="noreferrer">Watch the 60s demo</a>.
       </p>
+    </section>
+
+    <section class="section simulator" id="simulator">
+      <div id="simulator-root"></div>
     </section>
 
     <section class="section" id="features">
@@ -537,6 +544,8 @@ if (root) {
   }
 
   render()
+  const simulatorRoot = document.querySelector<HTMLDivElement>('#simulator-root')
+  if (simulatorRoot) mountSimulator(simulatorRoot)
   fit()
 
   document.querySelector<HTMLDivElement>('#buttons')?.addEventListener('click', (event) => {
