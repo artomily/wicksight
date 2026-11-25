@@ -1,0 +1,51 @@
+{
+  "voice": "Daniel (onwK4e9ZLuTAKqWW03F9)",
+  "model": "eleven_v3",
+  "target_wpm": 130,
+  "beats": [
+    {
+      "id": "v3-1",
+      "window": "0-8s concept",
+      "text": "Four minutes to liquidation. You're not looking at your phone."
+    },
+    {
+      "id": "v3-2",
+      "window": "8-14s Telegram",
+      "text": "While you're in another app, the warning lands in Telegram."
+    },
+    {
+      "id": "v3-3",
+      "window": "14-21s glance + alert",
+      "text": "One glance: position, distance, time. The alert fires at sixty-one thousand five hundred.",
+      "atempo": 1.15
+    },
+    {
+      "id": "v3-4",
+      "window": "21-24s multi-position",
+      "text": "Three positions. Riskiest first: SOL, about ten minutes.",
+      "atempo": 1.3
+    },
+    {
+      "id": "v3-5",
+      "window": "24-41s close half",
+      "text": "Close half. WickSight previews the exact order, sized to the position. Default is No. Swipe to Yes, then tap. Reduce-only, on Binance testnet. Nothing else changes.",
+      "atempo": 1.1
+    },
+    {
+      "id": "v3-6",
+      "window": "41-48s receipt",
+      "text": "The receipt shows what changed. Liquidation moves away, and the buffer nearly doubles."
+    },
+    {
+      "id": "v3-7",
+      "window": "48-51s simulator",
+      "text": "The same HUD, in the Even Hub simulator."
+    },
+    {
+      "id": "v3-8",
+      "window": "51-60s safety + end",
+      "text": "Trade-only keys. Withdrawal keys refused. Testnet only. Explicit yes. WickSight.",
+      "atempo": 1.15
+    }
+  ]
+}
