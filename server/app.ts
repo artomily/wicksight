@@ -4,11 +4,13 @@ import { timingSafeEqual } from 'node:crypto'
 import type { ExchangeAdapter } from './exchange/types.ts'
 import { ExchangeError } from './exchange/types.ts'
 import { MockAdapter } from './exchange/mock.ts'
-import type { PositionFeed } from './feed.ts'
+import { feedViews, type PositionFeed } from './feed.ts'
 import type { AlertStore, PreviewStore } from './store.ts'
 import { parseIntent } from './intents.ts'
 import { transcribePcm } from './asr.ts'
-import { computeLiqEta, type MarkHistory } from './eta.ts'
+import { computeLiqEta, type LiqEta, type MarkBook } from './eta.ts'
+import type { PositionSnapshot } from './exchange/types.ts'
+import { rankByRisk, riskHeader } from '../shared/risk.ts'
 import { buildCloseReceipt } from './receipt.ts'
 
 export interface AppDeps {
@@ -16,7 +18,7 @@ export interface AppDeps {
   feed: PositionFeed
   alerts: AlertStore
   previews: PreviewStore
-  marks: MarkHistory
+  marks: MarkBook
   symbol: string
   apiToken: string
   corsOrigins: string[]
@@ -33,6 +35,30 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   const { adapter, feed, alerts, previews, symbol } = deps
 
   let orderInFlight = false
+
+  /** Every known position with its own ETA, riskiest first. */
+  const ranked = (): Array<{ position: PositionSnapshot; eta: LiqEta | null }> =>
+    rankByRisk(
+      feedViews(feed).map((position) => ({
+        position,
+        eta: computeLiqEta(deps.marks.snapshot(position.symbol), position),
+      })),
+    )
+
+  const openPosition = (symbol: string): PositionSnapshot | null =>
+    feedViews(feed).find((p) => p.symbol === symbol && p.hasPosition) ?? null
+
+  /** An explicit symbol, else the riskiest open position, else the configured one. */
+  const targetSymbol = (requested: unknown): string => {
+    if (typeof requested === 'string' && requested.trim()) return requested.trim().toUpperCase()
+    const top = ranked().find((entry) => entry.position.hasPosition)
+    return top?.position.symbol ?? symbol
+  }
+
+  const markFor = (requested: unknown): number | undefined => {
+    const want = targetSymbol(requested)
+    return feedViews(feed).find((p) => p.symbol === want)?.markPrice ?? feed.view()?.markPrice
+  }
 
   const expectedToken = Buffer.from(deps.apiToken)
 
@@ -104,7 +130,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   }))
 
   app.get('/api/state', async (_req, reply) => {
-    const position = feed.view()
+    const entries = ranked()
+    const position = entries[0]?.position ?? null
     const meta = feed.meta()
 
     if (!position) {
@@ -117,13 +144,16 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       })
     }
 
-    const alert = alerts.check(position.markPrice)
-    const eta = computeLiqEta(deps.marks.snapshot(), position)
+    const current = alerts.get()
+    const alertMark = current ? feedViews(feed).find((p) => p.symbol === current.symbol)?.markPrice : undefined
+    const alert = alertMark ? alerts.check(alertMark, current!.symbol) : current
     reply.header('Cache-Control', 'no-store')
     return {
       position,
       alert,
-      eta,
+      eta: entries[0]?.eta ?? null,
+      positions: entries.filter((entry) => entry.position.hasPosition || entries.length === 1),
+      header: riskHeader(entries),
       meta: {
         testnetOnly: true,
         mode: position.mode,
@@ -138,19 +168,20 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     }
   })
 
-  app.post<{ Body: { price?: unknown } }>('/api/alert', async (req, reply) => {
+  app.post<{ Body: { price?: unknown; symbol?: unknown } }>('/api/alert', async (req, reply) => {
     const price = Number(req.body?.price)
     if (!Number.isFinite(price) || price <= 0) {
       return reply.status(400).send({ error: 'BAD_PRICE', message: 'Price must be a positive number' })
     }
-    const position = feed.view()
+    const want = targetSymbol(req.body?.symbol)
+    const position = feedViews(feed).find((p) => p.symbol === want) ?? null
     if (!position || position.markPrice <= 0) {
       return reply.status(503).send({ error: 'NO_DATA', message: 'No live mark price yet' })
     }
     if (price < position.markPrice * 0.2 || price > position.markPrice * 5) {
       return reply.status(400).send({ error: 'PRICE_RANGE', message: 'Price is too far from the market' })
     }
-    return { alert: alerts.set(price, position.markPrice) }
+    return { alert: alerts.set(price, position.markPrice, position.symbol) }
   })
 
   app.delete('/api/alert', async () => {
@@ -158,8 +189,12 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     return { ok: true }
   })
 
-  app.post('/api/orders/preview', { preHandler: requireAuth }, async () => {
-    const preview = await adapter.previewCloseHalf(symbol)
+  app.post<{ Body: { symbol?: unknown } | undefined }>('/api/orders/preview', { preHandler: requireAuth }, async (req, reply) => {
+    const want = targetSymbol(req.body?.symbol)
+    if (!openPosition(want) && feedViews(feed).some((p) => p.hasPosition)) {
+      return reply.status(409).send({ error: 'NO_POSITION', message: `No open ${want} position to close` })
+    }
+    const preview = await adapter.previewCloseHalf(want)
     previews.create(preview)
     return { preview }
   })
@@ -178,17 +213,20 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       }
 
       const preview = previews.take(id)
-      if (preview.symbol !== symbol) {
+      const before = openPosition(preview.symbol)
+      if (!before || before.side !== preview.side) {
         return reply
           .status(409)
-          .send({ error: 'SYMBOL_MISMATCH', message: 'Confirmation does not match this position' })
+          .send({ error: 'SYMBOL_MISMATCH', message: 'Confirmation does not match an open position' })
       }
 
       orderInFlight = true
       try {
-        const before = feed.view()
-        const fill = await adapter.executeCloseHalf(symbol, preview.qty)
-        const position = (await feed.refresh()) ?? feed.view()
+        const fill = await adapter.executeCloseHalf(preview.symbol, preview.qty)
+        await feed.refresh()
+        const position =
+          feedViews(feed).find((p) => p.symbol === preview.symbol) ??
+          (await adapter.getPosition(preview.symbol))
         if (!position) throw new ExchangeError('Order filled but the position refresh failed', 502, 'NO_REFRESH')
         const receipt = buildCloseReceipt(before, position, fill)
         return { fill, position, preview, receipt }
@@ -198,26 +236,26 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     },
   )
 
-  app.post<{ Body: { text?: string } }>('/api/intent', async (req, reply) => {
+  app.post<{ Body: { text?: string; symbol?: string } }>('/api/intent', async (req, reply) => {
     const text = String(req.body?.text ?? '').trim()
     if (!text) return reply.status(400).send({ error: 'NO_TEXT', message: 'Send { "text": "…" }' })
 
     return {
       text,
-      intent: parseIntent(text, feed.view()?.markPrice),
+      intent: parseIntent(text, markFor(req.body?.symbol)),
       provider: 'text',
       latencyMs: 0,
     }
   })
 
-  app.post('/api/voice', async (req, reply) => {
+  app.post<{ Querystring: { symbol?: string } }>('/api/voice', async (req, reply) => {
     const pcm = req.body as Buffer
     if (!Buffer.isBuffer(pcm) || pcm.length < 3_200) {
       return reply.status(400).send({ error: 'NO_AUDIO', message: 'Send raw 16 kHz PCM16 mono audio' })
     }
 
     const transcript = await transcribePcm(pcm)
-    const markPrice = feed.view()?.markPrice
+    const markPrice = markFor(req.query?.symbol)
 
     const intent = transcript.text
       ? parseIntent(transcript.text, markPrice)

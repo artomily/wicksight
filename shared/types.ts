@@ -21,6 +21,7 @@ export interface PositionView {
 }
 
 export interface AlertView {
+  symbol: string
   price: number
   direction: 'above' | 'below'
   createdAt: number
@@ -35,11 +36,21 @@ export interface LiqEtaView {
   confidence: number
 }
 
+export interface PositionEntryView {
+  position: PositionView
+  eta: LiqEtaView | null
+}
+
 export interface StateResponse {
+  /** The riskiest open position (same as `positions[0]`). */
   position: PositionView
   alert: AlertView | null
   /** Time-to-liquidation estimate, or null when the tape is flat/noisy/away. */
   eta: LiqEtaView | null
+  /** Every open position, riskiest first (shortest ETA, then smallest buffer). */
+  positions: PositionEntryView[]
+  /** "3 positions · riskiest SOL ~6m" */
+  header: string
   meta: {
     testnetOnly: boolean
     mode: string

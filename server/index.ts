@@ -4,16 +4,16 @@ import { AlertStore, PreviewStore } from './store.ts'
 import { createFeed } from './feed.ts'
 import { buildApp } from './app.ts'
 import { warmAsr } from './asr.ts'
-import { MarkHistory } from './eta.ts'
+import { MarkBook } from './eta.ts'
 
 const adapter = createAdapter()
 const alerts = new AlertStore()
 const previews = new PreviewStore()
-const marks = new MarkHistory()
+const marks = new MarkBook()
 const feed = createFeed(adapter, config.symbol, {
-  onMark: (mark) => {
-    marks.push(mark)
-    alerts.check(mark)
+  onMark: (mark, symbol) => {
+    marks.push(symbol, mark)
+    alerts.check(mark, symbol)
   },
 })
 

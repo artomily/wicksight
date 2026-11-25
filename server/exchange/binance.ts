@@ -40,7 +40,6 @@ export class BinanceTestnetAdapter implements ExchangeAdapter {
   readonly mode = 'binance-testnet'
   readonly exchange = 'binance'
   readonly wsBaseUrl: string
-  private rules = new Map<string, { value: SymbolRules; at: number }>()
   private pauseUntil = 0
 
   constructor(
@@ -67,6 +66,11 @@ export class BinanceTestnetAdapter implements ExchangeAdapter {
 
   markPriceStreamUrl(symbol: string): string {
     return `${this.wsBaseUrl}/ws/${symbol.toLowerCase()}@markPrice@1s`
+  }
+
+  /** Every symbol's mark price in one frame per second; no request weight. */
+  allMarkPricesStreamUrl(): string {
+    return `${this.wsBaseUrl}/ws/!markPrice@arr@1s`
   }
 
   userStreamUrl(listenKey: string): string {
@@ -142,33 +146,37 @@ export class BinanceTestnetAdapter implements ExchangeAdapter {
     return body as T
   }
 
+  private allRules: { value: Map<string, SymbolRules>; at: number } | null = null
+
+  /** One cached exchangeInfo call covers every symbol (weight 1, ten-minute cache). */
   private async symbolRules(symbol: string): Promise<SymbolRules> {
-    const cached = this.rules.get(symbol)
-    if (cached && Date.now() - cached.at < 10 * 60_000) return cached.value
+    if (!this.allRules || Date.now() - this.allRules.at > 10 * 60_000) {
+      const info = await this.public<{
+        symbols: Array<{
+          symbol: string
+          filters: Array<Record<string, string>>
+          pricePrecision: number
+          quantityPrecision: number
+        }>
+      }>('/fapi/v1/exchangeInfo')
 
-    const info = await this.public<{
-      symbols: Array<{
-        symbol: string
-        filters: Array<Record<string, string>>
-        pricePrecision: number
-        quantityPrecision: number
-      }>
-    }>('/fapi/v1/exchangeInfo')
-
-    const row = info.symbols.find((s) => s.symbol === symbol)
-    if (!row) throw new ExchangeError(`Symbol ${symbol} is not listed on Binance Futures testnet`, 400, 'NO_SYMBOL')
-
-    const lot = row.filters.find((f) => f.filterType === 'LOT_SIZE')
-    const price = row.filters.find((f) => f.filterType === 'PRICE_FILTER')
-    const value: SymbolRules = {
-      stepSize: lot?.stepSize ?? '0.001',
-      tickSize: price?.tickSize ?? '0.10',
-      minQty: Number(lot?.minQty ?? '0'),
-      priceDecimals: Math.min(decimalsOf(price?.tickSize ?? '0.01'), 6),
-      qtyDecimals: Math.min(decimalsOf(lot?.stepSize ?? '0.001'), 8),
+      const value = new Map<string, SymbolRules>()
+      for (const row of info.symbols) {
+        const lot = row.filters.find((f) => f.filterType === 'LOT_SIZE')
+        const price = row.filters.find((f) => f.filterType === 'PRICE_FILTER')
+        value.set(row.symbol, {
+          stepSize: lot?.stepSize ?? '0.001',
+          tickSize: price?.tickSize ?? '0.10',
+          minQty: Number(lot?.minQty ?? '0'),
+          priceDecimals: Math.min(decimalsOf(price?.tickSize ?? '0.01'), 6),
+          qtyDecimals: Math.min(decimalsOf(lot?.stepSize ?? '0.001'), 8),
+        })
+      }
+      this.allRules = { value, at: Date.now() }
     }
-    this.rules.set(symbol, { value, at: Date.now() })
-    return value
+    const rules = this.allRules.value.get(symbol)
+    if (!rules) throw new ExchangeError(`Symbol ${symbol} is not listed on Binance Futures testnet`, 400, 'NO_SYMBOL')
+    return rules
   }
 
   async getPosition(symbol: string): Promise<PositionSnapshot> {
@@ -178,7 +186,35 @@ export class BinanceTestnetAdapter implements ExchangeAdapter {
       this.signed<PositionRiskRow[]>('GET', '/fapi/v2/positionRisk', { symbol }),
       this.symbolRules(symbol),
     ])
+    return this.toSnapshot(symbol, rows, rules)
+  }
 
+  /**
+   * All open positions in one signed call (positionRisk without a symbol,
+   * weight 5). Returns the flat snapshot for `fallbackSymbol` when the
+   * account has nothing open, so the HUD still has something to draw.
+   */
+  async getPositions(fallbackSymbol: string): Promise<PositionSnapshot[]> {
+    const rows = await this.signed<PositionRiskRow[]>('GET', '/fapi/v2/positionRisk')
+    const bySymbol = new Map<string, PositionRiskRow[]>()
+    for (const row of rows) {
+      if (Math.abs(Number(row.positionAmt)) <= 0) continue
+      const list = bySymbol.get(row.symbol) ?? []
+      list.push(row)
+      bySymbol.set(row.symbol, list)
+    }
+    if (bySymbol.size === 0) {
+      const rules = await this.symbolRules(fallbackSymbol)
+      return [this.toSnapshot(fallbackSymbol, [], rules)]
+    }
+    const out: PositionSnapshot[] = []
+    for (const [symbol, list] of bySymbol) {
+      out.push(this.toSnapshot(symbol, list, await this.symbolRules(symbol)))
+    }
+    return out
+  }
+
+  private toSnapshot(symbol: string, rows: PositionRiskRow[], rules: SymbolRules): PositionSnapshot {
     // Hedge mode returns one row per side; pick the side that actually holds size.
     const row = [...rows].sort(
       (a, b) => Math.abs(Number(b.positionAmt)) - Math.abs(Number(a.positionAmt)),

@@ -44,6 +44,12 @@ export interface ExchangeAdapter {
   readonly mode: string
   readonly exchange: string
   getPosition(symbol: string): Promise<PositionSnapshot>
+  /**
+   * Every open position on the account. Adapters without a multi-position
+   * call fall back to `[getPosition(fallbackSymbol)]` in the feed. When the
+   * account is flat this returns the flat snapshot for `fallbackSymbol`.
+   */
+  getPositions?(fallbackSymbol: string): Promise<PositionSnapshot[]>
   previewCloseHalf(symbol: string): Promise<OrderPreview>
   executeCloseHalf(symbol: string, qty: number): Promise<OrderFill>
   /** Epoch ms until which REST calls must be suppressed (exchange ban/demo limit). */

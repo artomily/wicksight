@@ -3,6 +3,8 @@ import { ExchangeError } from './exchange/types.ts'
 export type AlertDirection = 'above' | 'below'
 
 export interface AlertSnapshot {
+  /** The position the alert watches; its mark price is the trigger. */
+  symbol: string
   price: number
   direction: AlertDirection
   createdAt: number
@@ -10,21 +12,23 @@ export interface AlertSnapshot {
 }
 
 /**
- * One price alert at a time, checked on every position poll. Alerts only fire
- * while the app is polling — the G2 cannot show anything in the background, so
- * the UI is explicit about this.
+ * One price alert at a time, checked on every mark tick for its symbol. The
+ * glasses only show it while the app is open; the Telegram watcher (when
+ * paired) delivers it in the background too.
  */
 export class AlertStore {
   private alert: AlertSnapshot | null = null
 
-  set(price: number, markPrice: number): AlertSnapshot {
+  set(price: number, markPrice: number, symbol = 'BTCUSDT'): AlertSnapshot {
     const direction: AlertDirection = price >= markPrice ? 'above' : 'below'
-    this.alert = { price, direction, createdAt: Date.now(), triggeredAt: null }
+    this.alert = { symbol, price, direction, createdAt: Date.now(), triggeredAt: null }
     return this.alert
   }
 
-  check(markPrice: number): AlertSnapshot | null {
+  /** Check a mark tick. A tick for another symbol never triggers the alert. */
+  check(markPrice: number, symbol?: string): AlertSnapshot | null {
     if (!this.alert || this.alert.triggeredAt) return this.alert
+    if (symbol !== undefined && symbol !== this.alert.symbol) return this.alert
     const hit =
       this.alert.direction === 'above' ? markPrice >= this.alert.price : markPrice <= this.alert.price
     if (hit) this.alert.triggeredAt = Date.now()

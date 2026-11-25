@@ -131,3 +131,29 @@ export function computeLiqEta(
     confidence: r2,
   }
 }
+
+/** One {@link MarkHistory} per symbol, so each open position gets its own ETA fit. */
+export class MarkBook {
+  private books = new Map<string, MarkHistory>()
+
+  for(symbol: string): MarkHistory {
+    let book = this.books.get(symbol)
+    if (!book) {
+      book = new MarkHistory()
+      this.books.set(symbol, book)
+    }
+    return book
+  }
+
+  push(symbol: string, price: number, at = Date.now()): void {
+    this.for(symbol).push(price, at)
+  }
+
+  snapshot(symbol: string, now = Date.now()): MarkSample[] {
+    return this.books.get(symbol)?.snapshot(now) ?? []
+  }
+
+  clear(): void {
+    this.books.clear()
+  }
+}

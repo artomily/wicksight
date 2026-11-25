@@ -6,7 +6,7 @@ import { MockAdapter } from '../server/exchange/mock.ts'
 import { AlertStore, PreviewStore } from '../server/store.ts'
 import type { PositionFeed } from '../server/feed.ts'
 import type { PositionSnapshot } from '../server/exchange/types.ts'
-import { MarkHistory } from '../server/eta.ts'
+import { MarkBook } from '../server/eta.ts'
 
 const TOKEN = 'test-token'
 const AUTH = { authorization: `Bearer ${TOKEN}` }
@@ -16,24 +16,31 @@ interface Harness {
   app: FastifyInstance
   adapter: MockAdapter
   previews: PreviewStore
-  marks: MarkHistory
+  marks: MarkBook
   position: () => PositionSnapshot | null
+  positions: () => PositionSnapshot[]
 }
 
-async function harness(options: { ttlMs?: number; corsOrigins?: string[] } = {}): Promise<Harness> {
+async function harness(options: { ttlMs?: number; corsOrigins?: string[]; multi?: boolean } = {}): Promise<Harness> {
   const adapter = new MockAdapter()
   const alerts = new AlertStore()
   const previews = new PreviewStore(options.ttlMs)
-  const marks = new MarkHistory()
-  let position: PositionSnapshot | null = await adapter.getPosition('BTCUSDT')
+  const marks = new MarkBook()
+  let positions: PositionSnapshot[] = options.multi
+    ? await adapter.getPositions!('BTCUSDT')
+    : [await adapter.getPosition('BTCUSDT')]
+  const view = () => positions.find((p) => p.symbol === 'BTCUSDT') ?? positions[0] ?? null
 
   const feed: PositionFeed = {
     start: async () => {},
     stop: () => {},
-    view: () => position,
+    view,
+    views: () => positions,
     refresh: async () => {
-      position = await adapter.getPosition('BTCUSDT')
-      return position
+      positions = options.multi
+        ? await adapter.getPositions!('BTCUSDT')
+        : [await adapter.getPosition('BTCUSDT')]
+      return view()
     },
     meta: () => ({
       transport: 'mock',
@@ -57,7 +64,7 @@ async function harness(options: { ttlMs?: number; corsOrigins?: string[] } = {})
     keys: null,
   })
 
-  return { app, adapter, previews, marks, position: () => position }
+  return { app, adapter, previews, marks, position: view, positions: () => positions }
 }
 
 test('order routes reject requests without the app token', async () => {
@@ -246,7 +253,7 @@ test('state includes an ETA when mark ticks trend toward liquidation', async () 
     const mark = position()!.markPrice
     // 3 minutes of clean 1 s ticks, falling 700 USDT/min toward the long's liq.
     for (let i = 0; i < 181; i++) {
-      marks.push(mark + 2100 - i * (2100 / 180), now - 180_000 + i * 1_000)
+      marks.push('BTCUSDT', mark + 2100 - i * (2100 / 180), now - 180_000 + i * 1_000)
     }
 
     const res = await app.inject({ method: 'GET', url: '/api/state', headers: { origin: APP_ORIGIN } })
@@ -268,12 +275,81 @@ test('state hides the ETA when price is moving away', async () => {
     const mark = position()!.markPrice
     // A long with price climbing away from the liq line.
     for (let i = 0; i < 181; i++) {
-      marks.push(mark - 2100 + i * (2100 / 180), now - 180_000 + i * 1_000)
+      marks.push('BTCUSDT', mark - 2100 + i * (2100 / 180), now - 180_000 + i * 1_000)
     }
 
     const res = await app.inject({ method: 'GET', url: '/api/state', headers: { origin: APP_ORIGIN } })
     assert.equal(res.statusCode, 200)
     assert.equal(res.json().eta, null)
+  } finally {
+    await app.close()
+  }
+})
+
+
+test('state ranks every mock position riskiest first', async () => {
+  const { app } = await harness({ multi: true })
+  try {
+    const res = await app.inject({ method: 'GET', url: '/api/state', headers: { origin: APP_ORIGIN } })
+    assert.equal(res.statusCode, 200)
+    const body = res.json()
+    assert.equal(body.positions.length, 3)
+    assert.equal(body.position.symbol, 'SOLUSDT')
+    assert.equal(body.positions[0].position.symbol, 'SOLUSDT')
+    assert.match(body.header, /^3 positions · riskiest SOL/)
+    assert.ok(body.positions.every((entry: { position: PositionSnapshot }) => entry.position.hasPosition))
+  } finally {
+    await app.close()
+  }
+})
+
+test('close half applies to the requested symbol only', async () => {
+  const { app, positions } = await harness({ multi: true })
+  try {
+    const previewRes = await app.inject({
+      method: 'POST',
+      url: '/api/orders/preview',
+      headers: { ...AUTH, 'content-type': 'application/json' },
+      payload: { symbol: 'ETHUSDT' },
+    })
+    assert.equal(previewRes.statusCode, 200)
+    const preview = previewRes.json().preview
+    assert.equal(preview.symbol, 'ETHUSDT')
+    assert.equal(preview.qty, 0.1)
+
+    const executeRes = await app.inject({
+      method: 'POST',
+      url: '/api/orders/execute',
+      headers: { ...AUTH, 'content-type': 'application/json' },
+      payload: { id: preview.id },
+    })
+    assert.equal(executeRes.statusCode, 200)
+    assert.equal(executeRes.json().position.symbol, 'ETHUSDT')
+    assert.equal(executeRes.json().position.qty, 0.1)
+
+    const eth = positions().find((p) => p.symbol === 'ETHUSDT')
+    const sol = positions().find((p) => p.symbol === 'SOLUSDT')
+    assert.equal(eth?.qty, 0.1)
+    assert.equal(sol?.qty, 4)
+  } finally {
+    await app.close()
+  }
+})
+
+test('price alerts carry the symbol they watch', async () => {
+  const { app } = await harness({ multi: true })
+  try {
+    const arm = await app.inject({
+      method: 'POST',
+      url: '/api/alert',
+      headers: { 'content-type': 'application/json' },
+      payload: { price: 150, symbol: 'SOLUSDT' },
+    })
+    assert.equal(arm.statusCode, 200)
+    assert.equal(arm.json().alert.symbol, 'SOLUSDT')
+
+    const state = await app.inject({ method: 'GET', url: '/api/state', headers: { origin: APP_ORIGIN } })
+    assert.equal(state.json().alert.symbol, 'SOLUSDT')
   } finally {
     await app.close()
   }

@@ -13,18 +13,71 @@ export interface FeedMeta {
 }
 
 export interface FeedOptions {
-  onMark?: (markPrice: number) => void
+  onMark?: (markPrice: number, symbol: string) => void
 }
 
 export interface PositionFeed {
   start(): Promise<void>
   stop(): void
+  /** The configured symbol's position (or the first open one). */
   view(): PositionSnapshot | null
+  /** Every open position; the flat primary snapshot when nothing is open. */
+  views?(): PositionSnapshot[]
   meta(): FeedMeta
   refresh(): Promise<PositionSnapshot | null>
 }
 
+/** All positions a feed knows about, for feeds that predate multi-position. */
+export function feedViews(feed: PositionFeed): PositionSnapshot[] {
+  if (feed.views) return feed.views()
+  const one = feed.view()
+  return one ? [one] : []
+}
+
+async function loadPositions(adapter: ExchangeAdapter, symbol: string): Promise<PositionSnapshot[]> {
+  return adapter.getPositions ? adapter.getPositions(symbol) : [await adapter.getPosition(symbol)]
+}
+
+/** Shared by both feeds: keyed positions plus the "primary" lookup. */
+class PositionBook {
+  private positions = new Map<string, PositionSnapshot>()
+
+  constructor(private readonly symbol: string) {}
+
+  replace(list: PositionSnapshot[]): void {
+    this.positions = new Map(list.map((p) => [p.symbol, p]))
+  }
+
+  get size(): number {
+    return this.positions.size
+  }
+
+  primary(): PositionSnapshot | null {
+    const configured = this.positions.get(this.symbol)
+    if (configured?.hasPosition) return configured
+    for (const p of this.positions.values()) if (p.hasPosition) return p
+    return configured ?? this.positions.values().next().value ?? null
+  }
+
+  all(): PositionSnapshot[] {
+    return [...this.positions.values()]
+  }
+
+  mark(symbol: string, price: number): boolean {
+    const p = this.positions.get(symbol)
+    if (!p) return false
+    this.positions.set(symbol, applyMark(p, price))
+    return true
+  }
+}
+
 const MIN = 60_000
+
+interface MarkFrame {
+  e?: string
+  s?: string
+  p?: string
+}
 
 /**
  * Mock / OKX: no user-data stream, so the feed polls. The interval is local
@@ -32,7 +85,7 @@ const MIN = 60_000
  * pause gate stops calls entirely during a ban.
  */
 class PollingFeed implements PositionFeed {
-  private position: PositionSnapshot | null = null
+  private book: PositionBook
   private lastOk = 0
   private timer: ReturnType<typeof setInterval> | null = null
   private busy = false
@@ -43,7 +96,9 @@ class PollingFeed implements PositionFeed {
     private readonly intervalMs: number,
     private readonly transport: Transport,
     private readonly options: FeedOptions = {},
-  ) {}
+  ) {
+    this.book = new PositionBook(symbol)
+  }
 
   async start(): Promise<void> {
     await this.refresh()
@@ -56,7 +111,11 @@ class PollingFeed implements PositionFeed {
   }
 
   view(): PositionSnapshot | null {
-    return this.position
+    return this.book.primary()
+  }
+
+  views(): PositionSnapshot[] {
+    return this.book.all()
   }
 
   meta(): FeedMeta {
@@ -64,22 +123,23 @@ class PollingFeed implements PositionFeed {
     return {
       transport: this.transport,
       connected: true,
-      stale: !this.position || Date.now() - this.lastOk > Math.max(15_000, this.intervalMs * 3),
+      stale: this.book.size === 0 || Date.now() - this.lastOk > Math.max(15_000, this.intervalMs * 3),
       pausedUntil: adapterPause > Date.now() ? adapterPause : null,
       lastUpdate: this.lastOk,
     }
   }
 
   async refresh(): Promise<PositionSnapshot | null> {
-    if (this.busy) return this.position
+    if (this.busy) return this.book.primary()
     this.busy = true
     try {
-      this.position = await this.adapter.getPosition(this.symbol)
+      const list = await loadPositions(this.adapter, this.symbol)
+      this.book.replace(list)
       this.lastOk = Date.now()
-      this.options.onMark?.(this.position.markPrice)
-      return this.position
+      for (const p of list) if (p.markPrice > 0) this.options.onMark?.(p.markPrice, p.symbol)
+      return this.book.primary()
     } catch {
-      return this.position
+      return this.book.primary()
     } finally {
       this.busy = false
     }
@@ -95,7 +155,7 @@ class PollingFeed implements PositionFeed {
  *  - during a -1003 ban every REST call is suppressed until the ban expires
  */
 class BinanceFeed implements PositionFeed {
-  private position: PositionSnapshot | null = null
+  private book: PositionBook
   private lastMarkAt = 0
   private lastSnapshotAt = 0
   private lastSnapshotOk = 0
@@ -121,7 +181,9 @@ class BinanceFeed implements PositionFeed {
     private readonly adapter: BinanceTestnetAdapter,
     private readonly symbol: string,
     private readonly options: FeedOptions = {},
-  ) {}
+  ) {
+    this.book = new PositionBook(symbol)
+  }
 
   async start(): Promise<void> {
     await this.refresh().catch(() => null)
@@ -151,7 +213,11 @@ class BinanceFeed implements PositionFeed {
   }
 
   view(): PositionSnapshot | null {
-    return this.position
+    return this.book.primary()
+  }
+
+  views(): PositionSnapshot[] {
+    return this.book.all()
   }
 
   meta(): FeedMeta {
@@ -163,7 +229,7 @@ class BinanceFeed implements PositionFeed {
     return {
       transport: 'ws',
       connected: markOpen || userOpen,
-      stale: !this.position || (noMark && noSnapshot),
+      stale: this.book.size === 0 || (noMark && noSnapshot),
       pausedUntil: pausedUntil > Date.now() ? pausedUntil : null,
       lastUpdate: Math.max(this.lastMarkAt, this.lastSnapshotAt),
     }
@@ -172,17 +238,18 @@ class BinanceFeed implements PositionFeed {
   async refresh(): Promise<PositionSnapshot | null> {
     if (this.refreshBusy) {
       this.refreshQueued = true
-      return this.position
+      return this.book.primary()
     }
     this.refreshBusy = true
     try {
-      this.position = await this.adapter.getPosition(this.symbol)
+      const list = await loadPositions(this.adapter, this.symbol)
+      this.book.replace(list)
       this.lastSnapshotAt = Date.now()
       this.lastSnapshotOk = Date.now()
-      this.options.onMark?.(this.position.markPrice)
-      return this.position
+      for (const p of list) if (p.markPrice > 0) this.options.onMark?.(p.markPrice, p.symbol)
+      return this.book.primary()
     } catch {
-      return this.position
+      return this.book.primary()
     } finally {
       this.refreshBusy = false
       if (this.refreshQueued) {
@@ -203,7 +270,8 @@ class BinanceFeed implements PositionFeed {
 
   private openMarkSocket(): void {
     if (this.closed) return
-    const ws = new WebSocket(this.adapter.markPriceStreamUrl(this.symbol))
+    // One all-market stream covers every open position, whatever opens later.
+    const ws = new WebSocket(this.adapter.allMarkPricesStreamUrl())
     this.markSocket = ws
 
     ws.onopen = () => {
@@ -212,13 +280,19 @@ class BinanceFeed implements PositionFeed {
     }
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(String(event.data)) as { e?: string; s?: string; p?: string }
-        if (data.e !== 'markPriceUpdate' || data.s !== this.symbol || !data.p) return
-        const mark = Number(data.p)
-        if (!Number.isFinite(mark) || mark <= 0) return
-        this.lastMarkAt = Date.now()
-        if (this.position) this.position = applyMark(this.position, mark)
-        this.options.onMark?.(mark)
+        const raw = JSON.parse(String(event.data)) as MarkFrame | MarkFrame[]
+        const frames = Array.isArray(raw) ? raw : [raw]
+        let any = false
+        for (const data of frames) {
+          if (data.e !== 'markPriceUpdate' || !data.s || !data.p) continue
+          const mark = Number(data.p)
+          if (!Number.isFinite(mark) || mark <= 0) continue
+          // Only symbols we hold (plus the configured one) matter.
+          if (!this.book.mark(data.s, mark) && data.s !== this.symbol) continue
+          any = true
+          this.options.onMark?.(mark, data.s)
+        }
+        if (any) this.lastMarkAt = Date.now()
       } catch {
         // A malformed frame is not worth tearing the socket down for.
       }
@@ -325,7 +399,7 @@ class BinanceFeed implements PositionFeed {
     // Retry a missing snapshot (boot during a ban), refresh a stale one once
     // every 5 minutes in case a user-stream event was missed, and poll while
     // the mark socket is down.
-    const snapshotOld = !this.position || this.lastSnapshotOk === 0 || Date.now() - this.lastSnapshotOk > 5 * 60_000
+    const snapshotOld = this.book.size === 0 || this.lastSnapshotOk === 0 || Date.now() - this.lastSnapshotOk > 5 * 60_000
     if (markOpen && markFresh && !snapshotOld) return
     if (Date.now() < this.nextFallbackPollAt) return
 
