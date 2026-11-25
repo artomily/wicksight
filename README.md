@@ -24,7 +24,7 @@ The bottom line is the gesture hint (`Hold: speak · 2x exit`) when the ETA is h
 |---|---|---|
 | ![](docs/img/position.png) | ![](docs/img/confirm.png) | ![](docs/img/filled.png) |
 
-*Simulator capture against Binance Futures **testnet**: 0.01 BTCUSDT long, isolated 20x. No keys? The same screens run on a labelled mock position. After a close half the HUD adds the receipt `Liq 58,684 → 55,591 · buffer 4.6% → 9.6%`.*
+*Simulator capture against Binance Futures **testnet**: 0.01 BTCUSDT long, isolated 20x. No keys? The same screens run on a labelled mock book with BTC, ETH, and SOL. After a close half the HUD adds the receipt `Liq 58,684 → 55,591 · buffer 4.6% → 9.6%`.*
 
 ## Links
 
@@ -81,14 +81,32 @@ The values come from the exchange snapshots, not from the order preview; if Bina
 ## Demo flow (20 seconds)
 
 1. The glasses show the open position, live PnL, liquidation distance, and — when the tape is trending toward the line — `LIQ IN ~4m at this pace`.
-2. Hold the temple → **"alert 62,000"** → release. The alert is armed while the app is open.
+2. Hold the temple → **"alert 62,000"** → release. The alert shows on the glasses while the app is open and can be delivered by Telegram when it is not.
 3. Hold again → **"close half"** → the confirm screen shows **No, keep 0.010** and **Yes, sell 0.005**.
 4. Swipe to **Yes**, tap. The order goes to Binance Futures **testnet**; the fill is shown with the after-action receipt (`Liq 58,684 → 55,591 · buffer 4.6% → 9.6%`).
 5. Price alert hits → the screen switches to **ALERT HIT** until you tap.
 
 ## Who it's for
 
-Active crypto-futures traders who already wear G2 for notifications and navigation, and prop-desk traders who keep one position open through a session. The first version is deliberately single-position: the person who needs this has one trade they care about, not a portfolio to manage from their glasses.
+Active crypto-futures traders who already wear G2 for notifications and navigation, prop-desk traders running a few positions, and traders who want a second pair of eyes without another phone screen.
+
+## Who uses it
+
+| Who | Job to be done | What they get |
+|---|---|---|
+| Solo futures trader | "Tell me when this trade is about to go wrong, even when the app is closed." | Riskiest-first HUD, ETA, and Telegram alerts on ETA, buffer, or a price level. |
+| Prop-desk / small fund trader | "I run 2–3 positions and need the worst one first." | Multi-position HUD, swipe/tap to cycle, close-half applies to the selected position. |
+| Trading educator / community | "Show the risk, then show the fix." | Browser simulator with three synthetic positions, a guided 30 s tour, and receipts. |
+
+## Pricing hypothesis
+
+| Tier | Price | What is included |
+|---|---|---|
+| **Free** | $0 | One position, testnet/mock, live HUD, in-app alerts, browser simulator. |
+| **Pro** | ~$9/month | 2–3+ positions, background Telegram alerts, ETA/buffer thresholds, per-symbol price alerts, receipt history. |
+| **Desk** | ~$49/month | Multiple seats, shared alert routing, role-based keys, audit export. |
+
+The free tier proves the interaction; Pro charges for the part that costs money to run (always-on server, Telegram delivery, multi-position watchers). No custody, no percentage of assets, no trading fees.
 
 **Why now.** Track 03's own example is this exact flow, and the Even Hub catalogue has messaging, news, AI and navigation apps but no trading app. Testnet-only keeps the first release away from custody and away from financial advice.
 
@@ -104,8 +122,8 @@ This is the part that matters for a trading app.
 
 | Risk | How it is handled |
 |---|---|
-| Mainnet / real funds | **Binance:** the adapter refuses to boot against any host that is not `testnet.binancefuture.com` (exact hostname match, lookalikes rejected). **OKX:** there is no separate demo host — the adapter refuses to construct unless `OKX_DEMO=1` and always sends `x-simulated-trading: 1`. Treat OKX as demo-header-only, not a sandbox guarantee. No live order path is wired. |
-| API keys | Only in the server's `.env`. Never sent to the WebView, never logged, never committed (`.gitignore`). |
+| Mainnet / real funds | **Testnet is the default.** The Binance adapter refuses any host that is not `testnet.binancefuture.com` unless `ALLOW_MAINNET=1` is set explicitly; then it accepts `fapi.binance.com`/`fstream.binance.com` and prints a loud warning. **OKX:** there is no separate demo host — the adapter refuses to construct unless `OKX_DEMO=1` and always sends `x-simulated-trading: 1`. Treat OKX as demo-header-only, not a sandbox guarantee. |
+| API keys | Only in the server's `.env`. Never sent to the WebView, never logged, never committed (`.gitignore`). At boot the server reads Binance `GET /sapi/v1/account/apiRestrictions`; a key with **withdrawals enabled is refused**, and futures trade is required. A sub-account + IP whitelist is recommended and surfaced in the host panel. |
 | Order API access | `/api/orders/*` requires a shared bearer token (`API_TOKEN`) that only the app bundle carries; CORS is an origin allowlist (`CORS_ORIGINS`). An unauthenticated request cannot preview or execute, even on localhost. It stops drive-by pages and bare `curl`; it is not user authentication, so set a random token and HTTPS for any public deployment. |
 | Accidental order | Voice only creates a **preview**. Executing requires a second gesture: swipe to **Yes**, then tap. The default selection is **No**. |
 | Double execution | The preview ID is single-use, bound to the exact quantity, and expires after 45 s. A replay gets `409 PREVIEW_USED`, an expired one `410 PREVIEW_EXPIRED`, and the position cannot move twice. |
@@ -114,23 +132,49 @@ This is the part that matters for a trading app.
 | Receipt | Built from the cached position before the order and the exchange position after it. A missing liquidation price renders as `—`, never as an invented number. |
 | Rate limits | Mark price arrives over WebSocket (zero REST weight). REST is used only for the initial snapshot, orders and a 12 s fallback. On `-1003` / 429 the server stops **all** REST calls until the ban's own resume timestamp, keeps serving the cached position, and the HUD shows `RATE LIMITED`. |
 | Auto-trading | There is none. Alerts are display-only; nothing fires an order without a human. |
-| Data | One position, read from the user's own exchange account. No analytics, no third-party sharing. |
+| Data | 1–3+ open positions, read from the user's own exchange account. No analytics, no third-party sharing. |
+| Background alerts | The server-side watcher sends Telegram messages for ETA < 10 min, buffer < 5%, or a price alert, with dedupe/cooldown. The message links back to the glasses confirmation; it never places an order. |
 
-Alerts only fire **while the app is open** — Even G2 shows one app at a time and cannot push in the background. The UI says so on the alert confirmation screen.
+## SECURITY
+
+WickSight is a trading interface, so the key is treated as a liability, not a credential.
+
+1. **Create a sub-account** on Binance Futures testnet (or mainnet, only after the explicit opt-in). Never use the main account key.
+2. **Enable futures trade only.** Disable withdrawals, internal transfer, margin, and spot trading.
+3. **Add an IP whitelist** for the server that runs WickSight.
+4. **The server enforces it.** On boot it calls the exchange permission endpoint:
+   - `enableWithdrawals = true` → **refuse to start** (`KEY_WITHDRAWAL_ENABLED`).
+   - `enableFutures = false` → **refuse to start** (`KEY_NO_FUTURES`).
+   - no IP whitelist → start with a warning surfaced in the host panel.
+5. **Mainnet is opt-in.** `ALLOW_MAINNET=1` plus mainnet URLs; without it the adapter rejects the host at boot. The HUD and host panel show `BINANCE MAINNET` when active.
+6. **Orders are reduce-only.** Every close-half order sends `reduceOnly=true`; the preview is single-use, quantity-bound, and expires.
+7. **Telegram never trades.** `TELEGRAM_BOT_TOKEN` stays in `.env`; the paired chat id lives in `.local/telegram-chat.json` (gitignored). The bot only sends text and a deep link back to the glasses confirmation.
+8. **Host panel guidance.** The phone-side panel has a SECURITY card showing withdrawal/futures/IP status and the active mode before the first trade.
+
+## Telegram background alerts (optional)
+
+1. Create a bot with [@BotFather](https://t.me/BotFather) and copy the token.
+2. Put it in `.env` as `TELEGRAM_BOT_TOKEN=…` (never commit it).
+3. Start the server, open your bot, send `/start`. The chat id is written to `.local/telegram-chat.json`.
+4. Commands: `/status`, `/test`, `/stop`.
+5. Remove the token to run the **mock** demo: the host panel shows an outbox and a "Send mock alert" button, and the server logs the exact message it would send.
+
+Thresholds: `TELEGRAM_ALERT_MINUTES=10`, `TELEGRAM_BUFFER_PCT=5`, `TELEGRAM_COOLDOWN_SEC=300`. The watcher runs on every mark tick, deduped per condition, and works with the glasses app closed.
 
 ## Architecture
 
 ```
 Even G2 (or the Even Hub simulator)
 └── WebView app — Vite + TypeScript + @evenrealities/even_hub_sdk
-    ├── 3-line HUD + ETA hint (576×288), textContainerUpgrade for live values
+    ├── 3-line HUD + riskiest-first header + ETA hint (576×288)
     ├── push-to-talk: 16 kHz PCM16 from the glasses mic
     └── fetch → WickSight API (whitelisted origin in app.json)
                  │
                  ├── POST /api/voice     PCM → Whisper small.en → intent
-                 ├── GET  /api/state     cached position + alert + ETA (no exchange call)
-                 ├── POST /api/orders/preview   exact qty + token
-                 └── POST /api/orders/execute   single-use token → fill + receipt
+                 ├── GET  /api/state     ranked positions + alert + ETA (no exchange call)
+                 ├── POST /api/orders/preview   exact qty + symbol + token
+                 ├── POST /api/orders/execute   single-use token → fill + receipt
+                 └── background watcher  ETA/buffer/price → Telegram (optional)
                               │
                     Binance Futures TESTNET (default)
                     ├── mark price: WebSocket `<symbol>@markPrice@1s`
@@ -146,7 +190,7 @@ WebSocket, so the HUD stays live without REST weight; if the socket drops, a
 single REST snapshot runs at most every 12 s, and a Binance IP ban stops every
 request until its resume timestamp.
 
-The phone-side page in the simulator (and the WebView on real hardware) shows connection state and a text box that exercises the same intent parser — useful when a demo room is too loud.
+The phone-side page in the simulator (and the WebView on real hardware) shows connection state, the riskiest-first header, key-safety status, Telegram pairing/outbox, and a text box that exercises the same intent parser — useful when a demo room is too loud.
 
 ## Run it
 
